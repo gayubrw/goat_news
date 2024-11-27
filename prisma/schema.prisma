@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String?   @unique @map("clerk_id") @db.VarChar(200)
+  role          String?   @default("user")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  news             News[]
+  userInteractions UserInteraction[]
+
+  @@map("users")
+}
+
+model News {
+  id            String   @id @default(cuid())
+  path          String   @unique @db.VarChar(100)
+  title         String   @db.VarChar(200)
+  thumbnailUrl  String?  @map("thumbnail_url") @db.VarChar(1000)
+  description   String   @db.VarChar(200)
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  subCategoryId String   @map("sub_category_id")
+  userId        String   @map("user_id")
+
+  user             User              @relation(fields: [userId], references: [id])
+  subCategory      SubCategory       @relation(fields: [subCategoryId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  sections         Section[]
+  newsInteractions NewsInteraction[]
+
+  @@map("news")
+}
+
+model Section {
+  id          String   @id @default(cuid())
+  order       Int
+  isSeparator Boolean  @map("is_separator")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  newsId      String   @map("news_id")
+
+  news          News           @relation(fields: [newsId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionImages SectionImage[]
+  sectionTexts  SectionText[]
+
+  @@map("sections")
+}
+
+model SectionImage {
+  id          String   @id @default(cuid())
+  title       String   @db.VarChar(100)
+  imageUrl    String   @map("image_url") @db.VarChar(1000)
+  alt         String   @db.VarChar(50)
+  description String   @db.VarChar(150)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  sectionId   String   @map("sections_id")
+
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("section_images")
+}
+
+model SectionText {
+  id        String   @id @default(cuid())
+  title     String   @db.VarChar(100)
+  text      String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  sectionId String   @map("sections_id")
+
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("section_text")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  path        String   @unique @db.VarChar(100)
+  title       String   @db.VarChar(100)
+  description String   @db.VarChar(200)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  subCategories SubCategory[]
+
+  @@map("categories")
+}
+
+model SubCategory {
+  id          String   @id @default(cuid())
+  path        String   @unique @db.VarChar(100)
+  title       String   @db.VarChar(100)
+  description String   @db.VarChar(200)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  categoryId  String   @map("category_id")
+
+  category Category @relation(fields: [categoryId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  news     News[]
+
+  @@map("sub_categories")
+}
+
+model UserInteraction {
+  id                String   @id @default(cuid())
+  contributionScore Int      @map("contribution_score")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  userId            String   @map("user_id")
+
+  user      User       @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  likes     Like[]
+  bookmarks Bookmark[]
+  comments  Comment[]
+
+  @@map("users_interactions")
+}
+
+model NewsInteraction {
+  id              String   @id @default(cuid())
+  popularityScore Int      @map("popularity_score")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  newsId          String   @map("news_id")
+
+  news      News       @relation(fields: [newsId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  likes     Like[]
+  bookmarks Bookmark[]
+  comments  Comment[]
+
+  @@map("news_interactions")
+}
+
+model Like {
+  id                String   @id @default(cuid())
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  newsInteractionId String   @map("news_interaction_id")
+  userInteractionId String   @map("user_interaction_id")
+
+  newsInteraction NewsInteraction @relation(fields: [newsInteractionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userInteraction UserInteraction @relation(fields: [userInteractionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@map("likes")
+}
+
+model Bookmark {
+  id                String   @id @default(cuid())
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  newsInteractionId String   @map("news_interaction_id")
+  userInteractionId String   @map("user_interaction_id")
+
+  newsInteraction NewsInteraction @relation(fields: [newsInteractionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userInteraction UserInteraction @relation(fields: [userInteractionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@map("bookmarks")
+}
+
+model Comment {
+  id                String @id @default(cuid())
+  text              String @db.Text
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  newsInteractionId String @map("news_interaction_id")
+  userInteractionId String @map("user_interaction_id")
+
+  newsInteraction NewsInteraction @relation(fields: [newsInteractionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userInteraction UserInteraction @relation(fields: [userInteractionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@map("comments")
+}
