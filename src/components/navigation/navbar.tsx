@@ -58,7 +58,6 @@ const Navbar = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [userRole, setUserRole] = useState<string | null>(null);
 
-    // Dapatkan initial huruf untuk Avatar fallback
     const getInitials = () => {
         if (!user?.firstName && !user?.lastName) {
             return user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?';
@@ -67,7 +66,6 @@ const Navbar = () => {
     };
 
     useEffect(() => {
-        // Fetch categories using server action
         const fetchCategories = async () => {
             try {
                 const data = await getCategories();
@@ -85,7 +83,6 @@ const Navbar = () => {
     }, []);
 
     useEffect(() => {
-        // Fetch user role from database
         const fetchUserRole = async () => {
             if (isSignedIn) {
                 try {
@@ -102,7 +99,6 @@ const Navbar = () => {
         fetchUserRole();
     }, [isSignedIn]);
 
-    // Transform categories into menu items
     const menuItems = [
         { label: 'Home', href: '/' },
         ...categories.map(category => ({
@@ -127,7 +123,7 @@ const Navbar = () => {
 
     const SearchCommand = () => (
         <CommandDialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-            <DialogTitle className='sr'>
+            <DialogTitle className='sr-only'>
                 <div id="search-title">Search Articles</div>
             </DialogTitle>
             <CommandInput
@@ -172,7 +168,7 @@ const Navbar = () => {
                         <p className="text-xs text-muted-foreground">
                             {user?.emailAddresses[0]?.emailAddress}
                         </p>
-                        {userRole === 'admin' && ( // Ubah kondisi ini
+                        {userRole === 'admin' && (
                             <Badge variant="outline" className="w-fit mt-1">
                                 Admin
                             </Badge>
@@ -181,7 +177,7 @@ const Navbar = () => {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                    {userRole === 'admin' && ( // Ubah kondisi ini
+                    {userRole === 'admin' && (
                         <DropdownMenuItem asChild>
                             <Link href="/admin" className="flex items-center">
                                 <LayoutDashboard className="w-4 h-4 mr-2" />
@@ -248,7 +244,9 @@ const Navbar = () => {
                                 <div className="h-9 w-64 bg-muted animate-pulse rounded-md" />
                             ) : (
                                 menuItems.map((item) => {
-                                    const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                                    const isActive = item.href === '/' 
+                                        ? pathname === '/' 
+                                        : pathname === item.href || pathname === `${item.href}/`;
                                     return (
                                         <Button
                                             key={item.label}
@@ -310,7 +308,9 @@ const Navbar = () => {
                                         ))
                                     ) : (
                                         menuItems.map((item) => {
-                                            const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                                            const isActive = item.href === '/' 
+                                                ? pathname === '/' 
+                                                : pathname === item.href || pathname === `${item.href}/`;
                                             return (
                                                 <Button
                                                     key={item.label}
