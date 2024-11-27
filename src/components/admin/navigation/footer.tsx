@@ -23,7 +23,7 @@ const Footer: React.FC<FooterProps> = ({ sidebarOpen, isMobile }) => {
                 ${!isMobile && (sidebarOpen ? 'lg:left-64' : 'lg:left-16')}
             `}
         >
-            <div className="container mx-auto px-2 py-3">
+            <div className="container mx-auto px-2 py-3 max-w-7xl">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4">
                     <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
                         <span className="text-xs md:text-sm text-center md:text-left text-muted-foreground">

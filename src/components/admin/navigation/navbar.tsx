@@ -2,17 +2,18 @@
 
 import React from 'react';
 import {
-    Bell,
     Search,
     LogOut,
     User,
     Settings,
     Newspaper,
-    BellOff,
     Menu,
+    LayoutDashboard,
 } from 'lucide-react';
+import { useUser, useAuth } from '@clerk/nextjs';
 import ModeToggle from '@/components/mode-toggle';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,17 +21,11 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from '@/components/ui/sheet';
 import {
     CommandDialog,
     CommandInput,
@@ -50,27 +45,36 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }) => {
+    const { user, isSignedIn } = useUser();
+    const { signOut } = useAuth();
+    const router = useRouter();
     const [commandOpen, setCommandOpen] = React.useState(false);
-    const notifications = [
-        { id: 1, title: 'New comment', time: '2m ago', read: false },
-        { id: 2, title: 'Server error', time: '5m ago', read: false },
-        { id: 3, title: 'Deployment success', time: '1h ago', read: true },
-    ];
 
-    // Command palette hotkey
     useHotkeys('ctrl+k,cmd+k', (e) => {
         e.preventDefault();
         setCommandOpen(true);
     });
 
+    const handleLogout = async () => {
+        await signOut();
+        router.push('/sign-in');
+    };
+
+    const getInitials = () => {
+        if (!user?.firstName && !user?.lastName) {
+            return user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?';
+        }
+        return `${user?.firstName?.charAt(0) || ''}${user?.lastName?.charAt(0) || ''}`;
+    };
+
     return (
         <>
             <header
                 className={`bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60
-                border-b fixed top-0 right-0 z-20 transition-all duration-200 h-16 left-0
+                border-b fixed top-0 right-0 z-20 transition-all duration-200 h-16 left-0 flex justify-center px-6
                 ${!isMobile && (sidebarOpen ? 'lg:left-64' : 'lg:left-16')}`}
             >
-                <div className="flex items-center justify-between h-16 px-4">
+                <div className="flex items-center justify-between h-16 w-full lg:max-w-7xl">
                     <div className="flex items-center flex-1 gap-4">
                         {/* Mobile Menu Toggle */}
                         {isMobile && (
@@ -113,67 +117,6 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }
                     <div className="flex items-center gap-2 md:gap-4">
                         <ModeToggle />
 
-                        <Sheet>
-                            <SheetTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="relative"
-                                >
-                                    <Bell className="h-5 w-5" />
-                                    {notifications.filter((n) => !n.read)
-                                        .length > 0 && (
-                                        <Badge
-                                            variant="destructive"
-                                            className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0"
-                                        >
-                                            {
-                                                notifications.filter(
-                                                    (n) => !n.read
-                                                ).length
-                                            }
-                                        </Badge>
-                                    )}
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent
-                                side={isMobile ? "bottom" : "right"}
-                                className={isMobile ? "h-[80vh]" : "w-80 sm:w-96"}
-                            >
-                                <SheetHeader>
-                                    <SheetTitle>Notifications</SheetTitle>
-                                </SheetHeader>
-                                <div className="mt-4 space-y-2">
-                                    {notifications.map((notification) => (
-                                        <div
-                                            key={notification.id}
-                                            className={`flex items-center justify-between p-3 rounded-lg ${
-                                                notification.read
-                                                    ? 'bg-muted/50'
-                                                    : 'bg-muted'
-                                            }`}
-                                        >
-                                            <div className="flex flex-col gap-1">
-                                                <div className="text-sm font-medium">
-                                                    {notification.title}
-                                                </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {notification.time}
-                                                </div>
-                                            </div>
-                                            <Button variant="ghost" size="icon">
-                                                {notification.read ? (
-                                                    <BellOff className="h-4 w-4" />
-                                                ) : (
-                                                    <Bell className="h-4 w-4" />
-                                                )}
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </SheetContent>
-                        </Sheet>
-
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
@@ -181,12 +124,8 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }
                                     className="relative h-9 w-9 rounded-full"
                                 >
                                     <Avatar className="h-9 w-9">
-                                        <AvatarImage
-                                            src="/team/gayu.jpg"
-                                            alt="Profile"
-                                            className="aspect-square object-cover w-full h-full"
-                                        />
-                                        <AvatarFallback>GA</AvatarFallback>
+                                        <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User"} />
+                                        <AvatarFallback>{getInitials()}</AvatarFallback>
                                     </Avatar>
                                 </Button>
                             </DropdownMenuTrigger>
@@ -194,52 +133,60 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }
                                 className="w-56"
                                 align="end"
                             >
-                                <DropdownMenuLabel className="flex items-center gap-2">
-                                    <div>Goat Admin</div>
-                                    {isMobile && (
-                                        <Badge variant="outline" className="ml-auto">
+                                <DropdownMenuLabel>
+                                    <div className="flex flex-col space-y-1">
+                                        <p className="text-sm font-medium">
+                                            {user?.firstName} {user?.lastName}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {user?.emailAddresses[0]?.emailAddress}
+                                        </p>
+                                        <Badge variant="outline" className="w-fit mt-1">
                                             Admin
                                         </Badge>
-                                    )}
+                                    </div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <Link
-                                        href="/admin/profile"
-                                        className="flex items-center"
-                                    >
-                                        <User className="mr-2 h-4 w-4" />
-                                        <span>Profile</span>
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link
-                                        href="/admin/settings"
-                                        className="flex items-center"
-                                    >
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        <span>Settings</span>
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link
-                                        href="/"
-                                        className="flex items-center"
-                                    >
-                                        <Newspaper className="mr-2 h-4 w-4" />
-                                        <span>Goat News</span>
-                                    </Link>
-                                </DropdownMenuItem>
+                                <DropdownMenuGroup>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/admin" className="flex items-center">
+                                            <LayoutDashboard className="w-4 h-4 mr-2" />
+                                            Admin Panel
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/profile" className="flex items-center">
+                                            <User className="w-4 h-4 mr-2" />
+                                            Profile
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/settings" className="flex items-center">
+                                            <Settings className="w-4 h-4 mr-2" />
+                                            Settings
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/" className="flex items-center">
+                                            <Newspaper className="w-4 h-4 mr-2" />
+                                            Goat News
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </DropdownMenuGroup>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-red-600 dark:text-red-400">
-                                    <LogOut className="mr-2 h-4 w-4" />
-                                    <span>Logout</span>
+                                <DropdownMenuItem
+                                    className="text-red-600 dark:text-red-400"
+                                    onClick={handleLogout}
+                                >
+                                    <LogOut className="w-4 h-4 mr-2" />
+                                    Logout
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
                 </div>
             </header>
+
 
             <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
                 <DialogTitle>
@@ -259,9 +206,9 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }
                             {!isMobile && <CommandShortcut>⌘S</CommandShortcut>}
                         </CommandItem>
                         <CommandItem>
-                            <Bell className="mr-2 h-4 w-4" />
-                            <span>Notifications</span>
-                            {!isMobile && <CommandShortcut>⌘N</CommandShortcut>}
+                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                            <span>Dashboard</span>
+                            {!isMobile && <CommandShortcut>⌘D</CommandShortcut>}
                         </CommandItem>
                     </CommandGroup>
                 </CommandList>
