@@ -15,7 +15,6 @@ import {
     ThumbsUp,
     Bookmark,
     BarChart,
-    Shield,
     X,
 } from 'lucide-react';
 import {
@@ -23,7 +22,7 @@ import {
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -43,7 +42,11 @@ interface NavSection {
     }[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isMobile }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+    sidebarOpen,
+    setSidebarOpen,
+    isMobile,
+}) => {
     const pathname = usePathname();
 
     const navSections: NavSection[] = [
@@ -57,7 +60,11 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isMobile
             title: 'Content Management',
             items: [
                 { icon: FileText, label: 'News', href: '/admin/news' },
-                { icon: Layers, label: 'Categories', href: '/admin/categories' },
+                {
+                    icon: Layers,
+                    label: 'Categories',
+                    href: '/admin/categories',
+                },
                 {
                     icon: FolderTree,
                     label: 'Subcategories',
@@ -69,7 +76,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isMobile
             title: 'User Engagement',
             items: [
                 { icon: Users, label: 'Users', href: '/admin/users' },
-                { icon: Shield, label: 'Roles', href: '/admin/roles' },
                 {
                     icon: MessageSquare,
                     label: 'Comments',
@@ -126,14 +132,14 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isMobile
                 <h1
                     className={cn(
                         'font-semibold text-xl',
-                        (!sidebarOpen && !isMobile) && 'hidden'
+                        !sidebarOpen && !isMobile && 'hidden'
                     )}
                 >
                     Admin Panel
                 </h1>
                 <div
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className='p-2 rounded hover:bg-accent hover:text-accent-foreground hover:cursor-pointer'
+                    className="p-2 rounded hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
                 >
                     {isMobile && sidebarOpen ? (
                         <X className="h-5 w-5" />
@@ -154,8 +160,8 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isMobile
                                 </h2>
                             )}
                             <div className="space-y-1">
-                                {section.items.map((item, itemIdx) => (
-                                    (!sidebarOpen && !isMobile) ? (
+                                {section.items.map((item, itemIdx) =>
+                                    !sidebarOpen && !isMobile ? (
                                         <TooltipProvider key={itemIdx}>
                                             <Tooltip delayDuration={100}>
                                                 <TooltipTrigger asChild>
@@ -163,7 +169,9 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isMobile
                                                         href={item.href}
                                                         className={cn(
                                                             'flex items-center justify-center rounded-md p-2 text-sm font-medium transition-colors',
-                                                            isActiveLink(item.href)
+                                                            isActiveLink(
+                                                                item.href
+                                                            )
                                                                 ? 'bg-primary/10 text-primary hover:bg-primary/20'
                                                                 : 'hover:bg-accent hover:text-accent-foreground'
                                                         )}
@@ -196,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isMobile
                                             <span>{item.label}</span>
                                         </Link>
                                     )
-                                ))}
+                                )}
                             </div>
                         </div>
                     ))}

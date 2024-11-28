@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,11 +20,9 @@ import {
 } from '@/components/ui/select';
 import {
     Search,
-    Filter,
     MoreVertical,
     Ban,
     Mail,
-    Key,
     UserCheck,
     Shield,
 } from 'lucide-react';
@@ -37,64 +35,112 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getUsers, updateUserRole, deleteUser } from '@/actions/user';
+import { useToast } from '@/hooks/use-toast';
 
-interface User {
+interface EnrichedUser {
     id: string;
-    name: string;
-    email: string;
-    image: string | null;
-    emailVerified: string | null;
-    contributionScore: number;
+    clerkId: string | null;
+    role: string | null; // Changed to allow null
     createdAt: string;
-    role: {
-        id: string;
-        name: string;
-    };
+    updatedAt: string;
+    profile: {
+        firstName: string | null;
+        lastName: string | null;
+        imageUrl: string;
+        email: string | null;
+    } | null;
+    contributionScore: number;
+    totalNews: number;
 }
 
 const UsersPage = () => {
-    // Sample data
-    const users: User[] = [
-        {
-            id: '1',
-            name: 'John Doe',
-            email: 'john@example.com',
-            image: null,
-            emailVerified: '2024-11-24T10:00:00Z',
-            contributionScore: 125,
-            createdAt: '2024-11-20T10:00:00Z',
-            role: { id: '1', name: 'Admin' },
-        },
-        {
-            id: '2',
-            name: 'Jane Smith',
-            email: 'jane@example.com',
-            image: null,
-            emailVerified: null,
-            contributionScore: 85,
-            createdAt: '2024-11-22T09:30:00Z',
-            role: { id: '2', name: 'Editor' },
-        },
-    ];
-
+    const [users, setUsers] = useState<EnrichedUser[]>([]);
     const [filterRole, setFilterRole] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterVerified, setFilterVerified] = useState('all');
+    // const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
 
-    // Stats calculation
-    const stats = {
-        totalUsers: users.length,
-        verifiedUsers: users.filter((user) => user.emailVerified).length,
-        activeUsers: users.filter((user) => user.contributionScore > 100)
-            .length,
+    const loadUsers = useCallback(async () => {
+        try {
+            const data = await getUsers(filterRole, searchTerm);
+            const formattedData = data.map((user) => ({
+                ...user,
+                createdAt: user.createdAt.toISOString(),
+                updatedAt: user.updatedAt.toISOString(),
+            }));
+            setUsers(formattedData);
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: 'Error',
+                description: 'Failed to load users',
+                variant: 'destructive',
+            });
+        }
+    }, [filterRole, searchTerm, toast]);
+
+    useEffect(() => {
+        const debounce = setTimeout(loadUsers, 300);
+        return () => clearTimeout(debounce);
+    }, [filterRole, searchTerm, loadUsers]); // Added loadUsers
+
+    const handleRoleChange = async (userId: string, newRole: string) => {
+        if (newRole === 'admin') {
+            // Optional: Add confirmation dialog for making admin
+            const confirm = window.confirm(
+                'Are you sure you want to make this user an admin?'
+            );
+            if (!confirm) return;
+        }
+
+        try {
+            await updateUserRole(userId, newRole);
+            await loadUsers();
+            toast({
+                title: 'Success',
+                description: 'User role updated successfully',
+            });
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: 'Error',
+                description: 'Failed to update user role',
+                variant: 'destructive',
+            });
+        }
     };
 
-    const getInitials = (name: string) => {
-        return name
-            .split(' ')
-            .map((word) => word[0])
-            .join('')
-            .toUpperCase();
+    const handleDeleteUser = async (userId: string) => {
+        try {
+            await deleteUser(userId);
+            await loadUsers();
+            toast({
+                title: 'Success',
+                description: 'User deleted successfully',
+            });
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: 'Error',
+                description: 'Failed to delete user',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    const stats = {
+        totalUsers: users.length,
+        activeUsers: users.filter((user) => user.contributionScore > 100)
+            .length,
+        contentCreators: users.filter((user) => user.totalNews > 0).length,
+    };
+
+    const getInitials = (user: EnrichedUser) => {
+        if (!user.profile) return '??';
+        const firstName = user.profile.firstName || '';
+        const lastName = user.profile.lastName || '';
+        return `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase();
     };
 
     return (
@@ -127,22 +173,6 @@ const UsersPage = () => {
                 <Card className="border-border bg-card">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-foreground">
-                            Verified Users
-                        </CardTitle>
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-foreground">
-                            {stats.verifiedUsers}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Email verified
-                        </p>
-                    </CardContent>
-                </Card>
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-foreground">
                             Active Users
                         </CardTitle>
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
@@ -152,7 +182,23 @@ const UsersPage = () => {
                             {stats.activeUsers}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            Active contributors
+                            High contribution score
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card className="border-border bg-card">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-foreground">
+                            Content Creators
+                        </CardTitle>
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-foreground">
+                            {stats.contentCreators}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Users with news content
                         </p>
                     </CardContent>
                 </Card>
@@ -170,21 +216,6 @@ const UsersPage = () => {
                     />
                 </div>
                 <div className="flex gap-4">
-                    <Select
-                        value={filterVerified}
-                        onValueChange={setFilterVerified}
-                    >
-                        <SelectTrigger className="w-[180px] bg-muted border-input">
-                            <SelectValue placeholder="Verification Status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border-input">
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="verified">Verified</SelectItem>
-                            <SelectItem value="unverified">
-                                Unverified
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
                     <Select value={filterRole} onValueChange={setFilterRole}>
                         <SelectTrigger className="w-[180px] bg-muted border-input">
                             <SelectValue placeholder="Filter Role" />
@@ -192,17 +223,9 @@ const UsersPage = () => {
                         <SelectContent className="bg-background border-input">
                             <SelectItem value="all">All Roles</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="editor">Editor</SelectItem>
-                            <SelectItem value="moderator">Moderator</SelectItem>
+                            <SelectItem value="user">User</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button
-                        variant="outline"
-                        className="flex items-center gap-2 border-input"
-                    >
-                        <Filter size={20} />
-                        Filter
-                    </Button>
                 </div>
             </div>
 
@@ -221,7 +244,7 @@ const UsersPage = () => {
                                 Role
                             </TableHead>
                             <TableHead className="text-muted-foreground">
-                                Status
+                                News
                             </TableHead>
                             <TableHead className="text-muted-foreground">
                                 Contribution
@@ -243,36 +266,44 @@ const UsersPage = () => {
                                 <TableCell className="flex items-center gap-3">
                                     <Avatar>
                                         <AvatarImage
-                                            src={user.image || undefined}
+                                            src={user.profile?.imageUrl}
+                                            alt={user.profile?.firstName || ''}
                                         />
                                         <AvatarFallback className="bg-muted text-muted-foreground">
-                                            {getInitials(user.name)}
+                                            {getInitials(user)}
                                         </AvatarFallback>
                                     </Avatar>
                                     <span className="font-medium text-foreground">
-                                        {user.name}
+                                        {user.profile?.firstName}{' '}
+                                        {user.profile?.lastName}
                                     </span>
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">
-                                    {user.email}
+                                    {user.profile?.email}
                                 </TableCell>
                                 <TableCell>
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                        {user.role.name}
-                                    </span>
-                                </TableCell>
-                                <TableCell>
-                                    <span
-                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                            user.emailVerified
-                                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                        }`}
+                                    <Select
+                                        value={user.role || 'user'}
+                                        onValueChange={(newRole) =>
+                                            handleRoleChange(user.id, newRole)
+                                        }
+                                        disabled={user.role === 'admin'} // Prevent changing admin role
                                     >
-                                        {user.emailVerified
-                                            ? 'Verified'
-                                            : 'Unverified'}
-                                    </span>
+                                        <SelectTrigger className="w-[110px]">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="admin">
+                                                Admin
+                                            </SelectItem>
+                                            <SelectItem value="user">
+                                                User
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                    {user.totalNews}
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-2">
@@ -315,23 +346,39 @@ const UsersPage = () => {
                                             align="end"
                                             className="bg-background border-border"
                                         >
-                                            <DropdownMenuItem className="flex items-center gap-2 hover:bg-muted">
-                                                <Mail size={16} />
-                                                Send Verification
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="flex items-center gap-2 hover:bg-muted">
-                                                <Key size={16} />
-                                                Reset Password
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator className="bg-border" />
-                                            <DropdownMenuItem className="flex items-center gap-2 hover:bg-muted">
+                                            <DropdownMenuItem
+                                                className="flex items-center gap-2 hover:bg-muted"
+                                                onClick={() =>
+                                                    handleRoleChange(
+                                                        user.id,
+                                                        'admin'
+                                                    )
+                                                }
+                                            >
                                                 <Shield size={16} />
-                                                Change Role
+                                                Make Admin
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="flex items-center gap-2 hover:bg-muted"
+                                                onClick={() =>
+                                                    handleRoleChange(
+                                                        user.id,
+                                                        'user'
+                                                    )
+                                                }
+                                            >
+                                                <UserCheck size={16} />
+                                                Make User
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator className="bg-border" />
-                                            <DropdownMenuItem className="flex items-center gap-2 text-destructive hover:bg-muted">
+                                            <DropdownMenuItem
+                                                className="flex items-center gap-2 text-destructive hover:bg-muted"
+                                                onClick={() =>
+                                                    handleDeleteUser(user.id)
+                                                }
+                                            >
                                                 <Ban size={16} />
-                                                Block User
+                                                Delete User
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>

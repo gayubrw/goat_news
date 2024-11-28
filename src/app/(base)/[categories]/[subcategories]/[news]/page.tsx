@@ -14,7 +14,11 @@ import {
 import { getNews } from '@/actions/news';
 import { getClerkUser } from '@/actions/user';
 import { format } from 'date-fns';
-import { CopyLinkButton, ShareNativeButton, TwitterShareButton } from '@/components/share-button';
+import {
+    CopyLinkButton,
+    ShareNativeButton,
+    TwitterShareButton,
+} from '@/components/share-button';
 
 interface NewsPageParams {
     params: {
@@ -29,18 +33,20 @@ async function getNewsData(params: NewsPageParams['params']) {
     const [categories, subcategories, news] = await Promise.all([
         params.categories,
         params.subcategories,
-        params.news
+        params.news,
     ]);
 
-    const newsItem = allNews.find(n => n.path === news);
+    const newsItem = allNews.find((n) => n.path === news);
 
     if (!newsItem) {
         notFound();
     }
 
     // Verify category and subcategory paths match
-    if (newsItem.subCategory.category.path !== categories ||
-        newsItem.subCategory.path !== subcategories) {
+    if (
+        newsItem.subCategory.category.path !== categories ||
+        newsItem.subCategory.path !== subcategories
+    ) {
         notFound();
     }
 
@@ -72,7 +78,7 @@ export async function generateMetadata({
                 type: 'article',
                 authors: [authorName],
                 publishedTime: newsData.createdAt.toISOString(),
-                section: newsData.subCategory.category.title
+                section: newsData.subCategory.category.title,
             },
         };
     } catch {
@@ -95,7 +101,7 @@ export default async function NewsPage({ params }: NewsPageParams) {
 
     // Get related news from the same subcategory
     const relatedNews = (await getNews(newsData.subCategoryId))
-        .filter(news => news.id !== newsData.id)
+        .filter((news) => news.id !== newsData.id)
         .slice(0, 3);
 
     return (
@@ -110,19 +116,25 @@ export default async function NewsPage({ params }: NewsPageParams) {
                             </BreadcrumbItem>
                             <BreadcrumbSeparator />
                             <BreadcrumbItem>
-                                <BreadcrumbLink href={`/${newsData.subCategory.category.path}`}>
+                                <BreadcrumbLink
+                                    href={`/${newsData.subCategory.category.path}`}
+                                >
                                     {newsData.subCategory.category.title}
                                 </BreadcrumbLink>
                             </BreadcrumbItem>
                             <BreadcrumbSeparator />
                             <BreadcrumbItem>
-                                <BreadcrumbLink href={`/${newsData.subCategory.category.path}/${newsData.subCategory.path}`}>
+                                <BreadcrumbLink
+                                    href={`/${newsData.subCategory.category.path}/${newsData.subCategory.path}`}
+                                >
                                     {newsData.subCategory.title}
                                 </BreadcrumbLink>
                             </BreadcrumbItem>
                             <BreadcrumbSeparator />
                             <BreadcrumbItem>
-                                <BreadcrumbPage>{newsData.title}</BreadcrumbPage>
+                                <BreadcrumbPage>
+                                    {newsData.title}
+                                </BreadcrumbPage>
                             </BreadcrumbItem>
                         </BreadcrumbList>
                     </Breadcrumb>
@@ -195,40 +207,64 @@ export default async function NewsPage({ params }: NewsPageParams) {
 
                     {/* Sections */}
                     <div className="space-y-8">
-                        {newsData.sections.sort((a, b) => a.order - b.order).map((section) => (
-                            <div key={section.id}>
-                                {section.isSeparator ? (
-                                    <hr className="border-zinc-200 dark:border-zinc-800" />
-                                ) : (
-                                    <>
-                                        {section.sectionTexts.map(text => (
-                                            <div key={text.id} className="prose prose-lg prose-zinc dark:prose-invert max-w-none">
-                                                {text.title && <h2>{text.title}</h2>}
-                                                <div dangerouslySetInnerHTML={{ __html: text.text }} />
-                                            </div>
-                                        ))}
-                                        {section.sectionImages.map(image => (
-                                            <figure key={image.id} className="my-8">
-                                                <div className="aspect-video relative rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                                                    <Image
-                                                        src={image.imageUrl}
-                                                        alt={image.alt}
-                                                        className="w-full h-full object-cover"
-                                                        fill
-                                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                                    />
-                                                </div>
-                                                {image.description && (
-                                                    <figcaption className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
-                                                        {image.description}
-                                                    </figcaption>
-                                                )}
-                                            </figure>
-                                        ))}
-                                    </>
-                                )}
-                            </div>
-                        ))}
+                        {newsData.sections
+                            .sort((a, b) => a.order - b.order)
+                            .map((section) => (
+                                <div key={section.id}>
+                                    {section.isSeparator ? (
+                                        <hr className="border-zinc-200 dark:border-zinc-800" />
+                                    ) : (
+                                        <>
+                                            {section.sectionTexts.map(
+                                                (text) => (
+                                                    <div
+                                                        key={text.id}
+                                                        className="prose prose-lg prose-zinc dark:prose-invert max-w-none"
+                                                    >
+                                                        {text.title && (
+                                                            <h2>
+                                                                {text.title}
+                                                            </h2>
+                                                        )}
+                                                        <div
+                                                            dangerouslySetInnerHTML={{
+                                                                __html: text.text,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )
+                                            )}
+                                            {section.sectionImages.map(
+                                                (image) => (
+                                                    <figure
+                                                        key={image.id}
+                                                        className="my-8"
+                                                    >
+                                                        <div className="aspect-video relative rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                                            <Image
+                                                                src={
+                                                                    image.imageUrl
+                                                                }
+                                                                alt={image.alt}
+                                                                className="w-full h-full object-cover"
+                                                                fill
+                                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                            />
+                                                        </div>
+                                                        {image.description && (
+                                                            <figcaption className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
+                                                                {
+                                                                    image.description
+                                                                }
+                                                            </figcaption>
+                                                        )}
+                                                    </figure>
+                                                )
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            ))}
                     </div>
 
                     {/* Share Section */}
@@ -238,11 +274,8 @@ export default async function NewsPage({ params }: NewsPageParams) {
                                 title={newsData.title}
                                 description={newsData.description}
                             />
-                            <TwitterShareButton
-                                title={newsData.title}
-                            />
-                            <CopyLinkButton
-                            />
+                            <TwitterShareButton title={newsData.title} />
+                            <CopyLinkButton />
                         </div>
                     </div>
                 </div>

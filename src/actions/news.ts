@@ -10,21 +10,22 @@ import { Prisma } from '@prisma/client';
 const SectionImageSchema = z.object({
     imageUrl: z.string().min(1).max(1000),
     alt: z.string().min(1).max(50),
-    description: z.string().min(1).max(150)
+    description: z.string().min(1).max(150),
 });
 
 const SectionTextSchema = z.object({
-    text: z.string().min(1)
+    text: z.string().min(1),
 });
 
 const SectionSchema = z.object({
     id: z.string().optional(),
     order: z.number().min(0),
+    title: z.string().max(100).nullable(),
     isSeparator: z.boolean(),
     content: z.discriminatedUnion('type', [
         z.object({ type: z.literal('text'), data: SectionTextSchema }),
-        z.object({ type: z.literal('image'), data: SectionImageSchema })
-    ])
+        z.object({ type: z.literal('image'), data: SectionImageSchema }),
+    ]),
 });
 
 const NewsSchema = z.object({
@@ -33,7 +34,7 @@ const NewsSchema = z.object({
     thumbnailUrl: z.string().max(1000).optional(),
     subCategoryId: z.string().min(1),
     userId: z.string().min(1),
-    sections: z.array(SectionSchema)
+    sections: z.array(SectionSchema),
 });
 
 // Path generator utility
@@ -56,7 +57,10 @@ class PathGenerator {
             .replace(/[^\w\s-]/g, '')
             .replace(/[\s_]+/g, this.separator)
             .replace(new RegExp(`${this.separator}+`, 'g'), this.separator)
-            .replace(new RegExp(`^${this.separator}|${this.separator}$`, 'g'), '');
+            .replace(
+                new RegExp(`^${this.separator}|${this.separator}$`, 'g'),
+                ''
+            );
     }
 
     private makeUnique(basePath: string): string {
@@ -92,7 +96,7 @@ class PathGenerator {
 
 async function getAllExistingPaths(): Promise<string[]> {
     const news = await prisma.news.findMany({ select: { path: true } });
-    return news.map(n => n.path);
+    return news.map((n) => n.path);
 }
 
 function handleError(error: unknown): never {
@@ -116,12 +120,16 @@ function handleError(error: unknown): never {
     }
 }
 
-async function createSections(newsId: string, sections: z.infer<typeof SectionSchema>[]) {
+async function createSections(
+    newsId: string,
+    sections: z.infer<typeof SectionSchema>[]
+) {
     const createdSections = await Promise.all(
         sections.map(async (section) => {
             const createdSection = await prisma.section.create({
                 data: {
                     order: section.order,
+                    title: section.title,
                     isSeparator: section.isSeparator,
                     newsId,
                 },
@@ -152,7 +160,9 @@ async function createSections(newsId: string, sections: z.infer<typeof SectionSc
     return createdSections;
 }
 
-export async function updateSections(sections: z.infer<typeof SectionSchema>[]) {
+export async function updateSections(
+    sections: z.infer<typeof SectionSchema>[]
+) {
     const updatedSections = await Promise.all(
         sections.map(async (section) => {
             if (!section.id) {
@@ -163,6 +173,7 @@ export async function updateSections(sections: z.infer<typeof SectionSchema>[]) 
                 where: { id: section.id },
                 data: {
                     order: section.order,
+                    title: section.title,
                     isSeparator: section.isSeparator,
                 },
             });
@@ -200,7 +211,7 @@ export async function getNews(subCategoryId?: string): Promise<News[]> {
                 subCategory: {
                     include: {
                         category: true,
-                    }
+                    },
                 },
                 sections: {
                     include: {
@@ -225,7 +236,7 @@ export async function getNews(subCategoryId?: string): Promise<News[]> {
         });
         return news as News[];
     } catch (error) {
-        console.error("[GET_NEWS]", error);
+        console.error('[GET_NEWS]', error);
         throw error;
     }
 }
@@ -236,7 +247,11 @@ export async function getNewsById(id: string): Promise<News | null> {
             where: { id },
             include: {
                 user: true,
-                subCategory: true,
+                subCategory: {
+                    include: {
+                        category: true,
+                    },
+                },
                 sections: {
                     include: {
                         sectionImages: true,
@@ -261,7 +276,9 @@ export async function getNewsById(id: string): Promise<News | null> {
     }
 }
 
-export async function createNews(data: z.infer<typeof NewsSchema>): Promise<News> {
+export async function createNews(
+    data: z.infer<typeof NewsSchema>
+): Promise<News> {
     try {
         const validation = NewsSchema.safeParse(data);
         if (!validation.success) {
@@ -301,7 +318,10 @@ export async function createNews(data: z.infer<typeof NewsSchema>): Promise<News
     }
 }
 
-export async function updateNews(id: string, data: z.infer<typeof NewsSchema>): Promise<News> {
+export async function updateNews(
+    id: string,
+    data: z.infer<typeof NewsSchema>
+): Promise<News> {
     try {
         const validation = NewsSchema.safeParse(data);
         if (!validation.success) {
@@ -311,10 +331,12 @@ export async function updateNews(id: string, data: z.infer<typeof NewsSchema>): 
         const existingPaths = await getAllExistingPaths();
         const currentNews = await prisma.news.findUnique({
             where: { id },
-            select: { path: true }
+            select: { path: true },
         });
 
-        const filteredPaths = existingPaths.filter(p => p !== currentNews?.path);
+        const filteredPaths = existingPaths.filter(
+            (p) => p !== currentNews?.path
+        );
         const pathGenerator = new PathGenerator(filteredPaths);
         const path = pathGenerator.generatePath(data.title);
 
@@ -354,7 +376,11 @@ export async function deleteNews(id: string): Promise<News> {
             where: { id },
             include: {
                 user: true,
-                subCategory: true,
+                subCategory: {
+                    include: {
+                        category: true,
+                    },
+                },
                 sections: {
                     include: {
                         sectionImages: true,
