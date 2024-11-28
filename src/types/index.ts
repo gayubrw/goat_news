@@ -27,6 +27,7 @@ export type News = {
 export type Section = {
     id: string;
     order: number;
+    title: string | null;
     isSeparator: boolean;
     updatedAt: Date;
     createdAt: Date;
@@ -38,7 +39,6 @@ export type Section = {
 
 export type SectionImage = {
     id: string;
-    title: string;
     imageUrl: string;
     alt: string;
     description: string;
@@ -50,7 +50,6 @@ export type SectionImage = {
 
 export type SectionText = {
     id: string;
-    title: string;
     text: string;
     updatedAt: Date;
     createdAt: Date;

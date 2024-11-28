@@ -1,9 +1,9 @@
-// src/components/share-buttons.tsx
 'use client';
 
 import { Share, Twitter, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
 
 interface ShareButtonProps {
     title: string;
@@ -11,14 +11,18 @@ interface ShareButtonProps {
 }
 
 export function ShareNativeButton({ title, description }: ShareButtonProps) {
-    const currentUrl = window.location.href; // Get the current full URL
+    const [currentUrl, setCurrentUrl] = useState('');
+
+    useEffect(() => {
+        setCurrentUrl(window.location.href);
+    }, []);
 
     const handleShare = () => {
         if (navigator.share) {
             navigator.share({
                 title,
                 text: description,
-                url: currentUrl, // Use the current URL dynamically
+                url: currentUrl,
             }).catch(() => {
                 toast.error("Sharing failed. Your browser might not support this feature.");
             });
@@ -41,7 +45,11 @@ export function ShareNativeButton({ title, description }: ShareButtonProps) {
 }
 
 export function TwitterShareButton({ title }: Omit<ShareButtonProps, 'description'>) {
-    const currentUrl = window.location.href; // Get the current full URL
+    const [currentUrl, setCurrentUrl] = useState('');
+
+    useEffect(() => {
+        setCurrentUrl(window.location.href);
+    }, []);
 
     const handleTwitterShare = () => {
         window.open(
@@ -64,7 +72,11 @@ export function TwitterShareButton({ title }: Omit<ShareButtonProps, 'descriptio
 }
 
 export function CopyLinkButton() {
-    const currentUrl = window.location.href; // Get the current full URL
+    const [currentUrl, setCurrentUrl] = useState('');
+
+    useEffect(() => {
+        setCurrentUrl(window.location.href);
+    }, []);
 
     const handleCopyLink = () => {
         navigator.clipboard.writeText(currentUrl).then(() => {

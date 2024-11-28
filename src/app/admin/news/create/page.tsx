@@ -20,6 +20,7 @@ import { getSubCategories } from '@/actions/subcategory';
 import { createNews } from "@/actions/news";
 import { getCurrentUserData } from "@/actions/user";
 import { SubCategory } from '@/types';
+import { ImageUploadField } from '@/components/image-upload';
 
 type TextContent = {
   text: string;
@@ -34,15 +35,15 @@ type ImageContent = {
 type Section = {
   id: string;
   order: number;
+  title: string | null;
   isSeparator: boolean;
-  title: string;
   content: {
     type: 'text' | 'image';
     data: TextContent | ImageContent;
   };
 };
 
-type EditorViewProps = {
+interface EditorViewProps {
   title: string;
   setTitle: (value: string) => void;
   description: string;
@@ -63,14 +64,14 @@ type EditorViewProps = {
   addSection: (type: 'text' | 'image') => void;
   updateSection: (index: number, data: Partial<Section>) => void;
   removeSection: (index: number) => void;
-};
+}
 
-type PreviewViewProps = {
+interface PreviewViewProps {
   title: string;
   description: string;
   thumbnailUrl: string;
   sections: Section[];
-};
+}
 
 const EditorView = ({
   title,
@@ -92,7 +93,7 @@ const EditorView = ({
   handleDragEnd,
   addSection,
   updateSection,
-  removeSection
+  removeSection,
 }: EditorViewProps) => (
   <div className="space-y-8">
     <Card>
@@ -121,13 +122,10 @@ const EditorView = ({
           </div>
 
           <div>
-            <Label htmlFor="thumbnail" className="font-medium">Thumbnail URL</Label>
-            <Input
-              id="thumbnail"
+            <ImageUploadField
               value={thumbnailUrl}
-              onChange={(e) => setThumbnailUrl(e.target.value)}
-              placeholder="Enter thumbnail URL"
-              className="mt-1"
+              onUploadComplete={setThumbnailUrl}
+              label="Thumbnail Image"
             />
           </div>
 
@@ -163,8 +161,8 @@ const EditorView = ({
         <Button onClick={() => setSections([...sections, {
           id: Math.random().toString(36).substr(2, 9),
           order: sections.length,
+          title: null,
           isSeparator: true,
-          title: '',
           content: { type: 'text', data: { text: '' } }
         }])} variant="outline">
           Add Separator
@@ -208,9 +206,9 @@ const EditorView = ({
                   <div>
                     <Label className="font-medium">Section Title</Label>
                     <Input
-                      value={section.title}
+                      value={section.title || ''}
                       onChange={(e) => updateSection(index, { title: e.target.value })}
-                      placeholder="Enter section title"
+                      placeholder="Enter section title (optional)"
                       className="mt-1"
                     />
                   </div>
@@ -235,23 +233,18 @@ const EditorView = ({
 
                   {section.content.type === 'image' && (
                     <div className="space-y-4">
-                      <div>
-                        <Label className="font-medium">Image URL</Label>
-                        <Input
-                          value={(section.content.data as ImageContent).imageUrl}
-                          onChange={(e) => updateSection(index, {
-                            content: {
-                              type: 'image',
-                              data: {
-                                ...(section.content.data as ImageContent),
-                                imageUrl: e.target.value
-                              }
+                      <ImageUploadField
+                        value={(section.content.data as ImageContent).imageUrl}
+                        onUploadComplete={(url) => updateSection(index, {
+                          content: {
+                            type: 'image',
+                            data: {
+                              ...(section.content.data as ImageContent),
+                              imageUrl: url
                             }
-                          })}
-                          placeholder="Image URL"
-                          className="mt-1"
-                        />
-                      </div>
+                          }
+                        })}
+                      />
                       <div>
                         <Label className="font-medium">Alt Text</Label>
                         <Input
@@ -419,241 +412,242 @@ const CreateNewsPage = () => {
 
   const addSection = (type: 'text' | 'image') => {
     const newSection: Section = {
-        id: Math.random().toString(36).substr(2, 9),
-        order: sections.length,
-        isSeparator: false,
-        title: '',
-        content: {
-          type,
-          data: type === 'text'
-            ? { text: '' }
-            : { imageUrl: '', alt: '', description: '' }
-        }
-      };
-      setSections([...sections, newSection]);
-    };
-
-    const updateSection = (index: number, data: Partial<Section>) => {
-      const newSections = [...sections];
-      newSections[index] = { ...newSections[index], ...data };
-      setSections(newSections);
-    };
-
-    const removeSection = (index: number) => {
-      const newSections = sections.filter((_, i) => i !== index);
-      setSections(newSections);
-    };
-
-    const handleDragStart = (index: number) => {
-      setIsDragging(true);
-      setDraggedIndex(index);
-    };
-
-    const handleDragOver = (e: React.DragEvent, index: number) => {
-      e.preventDefault();
-      if (draggedIndex === null) return;
-
-      const newSections = [...sections];
-      const draggedSection = newSections[draggedIndex];
-      newSections.splice(draggedIndex, 1);
-      newSections.splice(index, 0, draggedSection);
-      setSections(newSections);
-      setDraggedIndex(index);
-    };
-
-    const handleDragEnd = () => {
-      setIsDragging(false);
-      setDraggedIndex(null);
-    };
-
-    const handleSubmit = async () => {
-      if (isSubmitting) return;
-
-      // Form validation
-      if (!title.trim()) {
-        toast.error('Title is required');
-        return;
-      }
-
-      if (!description.trim()) {
-        toast.error('Description is required');
-        return;
-      }
-
-      if (!subCategoryId) {
-        toast.error('Please select a category');
-        return;
-      }
-
-      if (sections.length === 0) {
-        toast.error('Please add at least one section');
-        return;
-      }
-
-      // Validate sections
-      const hasInvalidImage = sections.some(section =>
-        section.content.type === 'image' &&
-        !(section.content.data as ImageContent).imageUrl
-      );
-
-      if (hasInvalidImage) {
-        toast.error('Please provide URLs for all images');
-        return;
-      }
-
-      const hasInvalidText = sections.some(section =>
-        section.content.type === 'text' &&
-        !(section.content.data as TextContent).text.trim()
-      );
-
-      if (hasInvalidText) {
-        toast.error('Please provide content for all text sections');
-        return;
-      }
-
-      setIsSubmitting(true);
-
-      try {
-        // Get current user
-        const currentUser = await getCurrentUserData();
-        if (!currentUser?.id) {
-          toast.error('You must be logged in to create news');
-          return;
-        }
-
-        // Format sections for submission
-        const formattedSections = sections.map((section) => ({
-          order: section.order,
-          isSeparator: section.isSeparator,
-          content: section.content.type === 'text'
-            ? {
-                type: 'text' as const,
-                data: {
-                  text: (section.content.data as TextContent).text
-                }
-              }
-            : {
-                type: 'image' as const,
-                data: {
-                  imageUrl: (section.content.data as ImageContent).imageUrl,
-                  alt: (section.content.data as ImageContent).alt,
-                  description: (section.content.data as ImageContent).description
-                }
-              }
-        }));
-
-        // Prepare news data
-        const newsData = {
-          title: title.trim(),
-          description: description.trim(),
-          thumbnailUrl: thumbnailUrl.trim() || undefined,
-          subCategoryId,
-          userId: currentUser.id,
-          sections: formattedSections
-        };
-
-        // Create the news
-        const result = await createNews(newsData);
-
-        toast.success('News created successfully!');
-
-        // Construct the full path for navigation
-        if (selectedSubCategory && result.path) {
-          const categoryPath = selectedSubCategory.category.path;
-          const subCategoryPath = selectedSubCategory.path;
-          const newsPath = result.path;
-
-          router.push(`/${categoryPath}/${subCategoryPath}/${newsPath}`);
-        } else {
-          // Fallback if we can't construct the full path
-          toast.error('Unable to navigate to the created news');
-          router.push('/');
-        }
-      } catch (error) {
-        console.error('Failed to create news:', error);
-        toast.error(error instanceof Error ? error.message : 'Failed to create news');
-      } finally {
-        setIsSubmitting(false);
+      id: Math.random().toString(36).substr(2, 9),
+      order: sections.length,
+      title: null,
+      isSeparator: false,
+      content: {
+        type,
+        data: type === 'text'
+          ? { text: '' }
+          : { imageUrl: '', alt: '', description: '' }
       }
     };
-
-    return (
-      <div className="min-h-screen pt-16">
-        <div className="max-w-4xl mx-auto p-6">
-          <div className="sticky top-0 z-10 pb-6">
-            <div className="flex justify-between items-center mb-6">
-              <div className="space-y-1">
-                <h1 className="text-3xl font-bold text-foreground">Create News</h1>
-                <p className="text-muted-foreground">Create a new article with rich content sections</p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Publishing...
-                    </>
-                  ) : (
-                    'Publish'
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            <Tabs defaultValue="editor" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="editor">
-                  <EyeOff className="w-4 h-4 mr-2" />
-                  Editor
-                </TabsTrigger>
-                <TabsTrigger value="preview">
-                  <Eye className="w-4 h-4 mr-2" />
-                  Preview
-                </TabsTrigger>
-              </TabsList>
-
-              <div className="mt-6">
-                <TabsContent value="editor">
-                  <EditorView
-                    title={title}
-                    setTitle={setTitle}
-                    description={description}
-                    setDescription={setDescription}
-                    thumbnailUrl={thumbnailUrl}
-                    setThumbnailUrl={setThumbnailUrl}
-                    subCategoryId={subCategoryId}
-                    setSubCategoryId={handleSubCategoryChange}
-                    subCategories={subCategories}
-                    isLoadingSubCategories={isLoadingSubCategories}
-                    sections={sections}
-                    setSections={setSections}
-                    isDragging={isDragging}
-                    draggedIndex={draggedIndex}
-                    handleDragStart={handleDragStart}
-                    handleDragOver={handleDragOver}
-                    handleDragEnd={handleDragEnd}
-                    addSection={addSection}
-                    updateSection={updateSection}
-                    removeSection={removeSection}
-                  />
-                </TabsContent>
-                <TabsContent value="preview">
-                  <PreviewView
-                    title={title}
-                    description={description}
-                    thumbnailUrl={thumbnailUrl}
-                    sections={sections}
-                  />
-                </TabsContent>
-              </div>
-            </Tabs>
-          </div>
-        </div>
-      </div>
-    );
+    setSections([...sections, newSection]);
   };
 
-  export default CreateNewsPage;
+  const updateSection = (index: number, data: Partial<Section>) => {
+    const newSections = [...sections];
+    newSections[index] = { ...newSections[index], ...data };
+    setSections(newSections);
+  };
+
+  const removeSection = (index: number) => {
+    const newSections = sections.filter((_, i) => i !== index);
+    setSections(newSections);
+  };
+
+  const handleDragStart = (index: number) => {
+    setIsDragging(true);
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null) return;
+
+    const newSections = [...sections];
+    const draggedSection = newSections[draggedIndex];
+    newSections.splice(draggedIndex, 1);
+    newSections.splice(index, 0, draggedSection);
+    setSections(newSections);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggedIndex(null);
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    // Form validation
+    if (!title.trim()) {
+      toast.error('Title is required');
+      return;
+    }
+
+    if (!description.trim()) {
+      toast.error('Description is required');
+      return;
+    }
+
+    if (!subCategoryId) {
+      toast.error('Please select a category');
+      return;
+    }
+
+    if (sections.length === 0) {
+      toast.error('Please add at least one section');
+      return;
+    }
+
+    // Validate sections
+    const hasInvalidImage = sections.some(section =>
+      section.content.type === 'image' &&
+      !(section.content.data as ImageContent).imageUrl
+    );
+
+    if (hasInvalidImage) {
+      toast.error('Please provide images for all image sections');
+      return;
+    }
+
+    const hasInvalidText = sections.some(section =>
+      section.content.type === 'text' &&
+      !(section.content.data as TextContent).text.trim()
+    );
+
+    if (hasInvalidText) {
+      toast.error('Please provide content for all text sections');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Get current user
+      const currentUser = await getCurrentUserData();
+      console.log(currentUser);
+      if (!currentUser?.id) {
+        toast.error('You must be logged in to create news');
+        return;
+      }
+
+      // Format sections for submission
+      const formattedSections = sections.map((section) => ({
+        order: section.order,
+        title: section.title,
+        isSeparator: section.isSeparator,
+        content: section.content.type === 'text'
+          ? {
+            type: 'text' as const,
+            data: {
+              text: (section.content.data as TextContent).text
+            }
+          }
+          : {
+            type: 'image' as const,
+            data: {
+              imageUrl: (section.content.data as ImageContent).imageUrl,
+              alt: (section.content.data as ImageContent).alt,
+              description: (section.content.data as ImageContent).description
+            }
+          }
+      }));
+
+      // Prepare news data
+      const newsData = {
+        title: title.trim(),
+        description: description.trim(),
+        thumbnailUrl: thumbnailUrl.trim() || undefined,
+        subCategoryId,
+        userId: currentUser.id,
+        sections: formattedSections
+      };
+
+      // Create the news
+      const result = await createNews(newsData);
+
+      toast.success('News created successfully!');
+
+      // Construct the full path for navigation
+      if (selectedSubCategory && result.path) {
+        const categoryPath = selectedSubCategory.category.path;
+        const subCategoryPath = selectedSubCategory.path;
+        const newsPath = result.path;
+
+        router.push(`/${categoryPath}/${subCategoryPath}/${newsPath}`);
+      } else {
+        toast.error('Unable to navigate to the created news');
+        router.push('/');
+      }
+    } catch (error) {
+      console.error('Failed to create news:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create news');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen pt-16">
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="sticky top-0 z-10 pb-6">
+          <div className="flex justify-between items-center mb-6">
+            <div className="space-y-1">
+              <h1 className="text-3xl font-bold text-foreground">Create News</h1>
+              <p className="text-muted-foreground">Create a new article with rich content sections</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  'Publish'
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <Tabs defaultValue="editor" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="editor">
+                <EyeOff className="w-4 h-4 mr-2" />
+                Editor
+              </TabsTrigger>
+              <TabsTrigger value="preview">
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="mt-6">
+              <TabsContent value="editor">
+                <EditorView
+                  title={title}
+                  setTitle={setTitle}
+                  description={description}
+                  setDescription={setDescription}
+                  thumbnailUrl={thumbnailUrl}
+                  setThumbnailUrl={setThumbnailUrl}
+                  subCategoryId={subCategoryId}
+                  setSubCategoryId={handleSubCategoryChange}
+                  subCategories={subCategories}
+                  isLoadingSubCategories={isLoadingSubCategories}
+                  sections={sections}
+                  setSections={setSections}
+                  isDragging={isDragging}
+                  draggedIndex={draggedIndex}
+                  handleDragStart={handleDragStart}
+                  handleDragOver={handleDragOver}
+                  handleDragEnd={handleDragEnd}
+                  addSection={addSection}
+                  updateSection={updateSection}
+                  removeSection={removeSection}
+                />
+              </TabsContent>
+              <TabsContent value="preview">
+                <PreviewView
+                  title={title}
+                  description={description}
+                  thumbnailUrl={thumbnailUrl}
+                  sections={sections}
+                />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CreateNewsPage;

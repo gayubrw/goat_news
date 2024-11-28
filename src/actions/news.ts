@@ -20,6 +20,7 @@ const SectionTextSchema = z.object({
 const SectionSchema = z.object({
     id: z.string().optional(),
     order: z.number().min(0),
+    title: z.string().max(100).nullable(),
     isSeparator: z.boolean(),
     content: z.discriminatedUnion('type', [
         z.object({ type: z.literal('text'), data: SectionTextSchema }),
@@ -122,6 +123,7 @@ async function createSections(newsId: string, sections: z.infer<typeof SectionSc
             const createdSection = await prisma.section.create({
                 data: {
                     order: section.order,
+                    title: section.title,
                     isSeparator: section.isSeparator,
                     newsId,
                 },
@@ -163,6 +165,7 @@ export async function updateSections(sections: z.infer<typeof SectionSchema>[]) 
                 where: { id: section.id },
                 data: {
                     order: section.order,
+                    title: section.title,
                     isSeparator: section.isSeparator,
                 },
             });
@@ -236,7 +239,11 @@ export async function getNewsById(id: string): Promise<News | null> {
             where: { id },
             include: {
                 user: true,
-                subCategory: true,
+                subCategory: {
+                    include: {
+                        category: true,
+                    }
+                },
                 sections: {
                     include: {
                         sectionImages: true,
@@ -354,7 +361,11 @@ export async function deleteNews(id: string): Promise<News> {
             where: { id },
             include: {
                 user: true,
-                subCategory: true,
+                subCategory: {
+                    include: {
+                        category: true
+                    }
+                },
                 sections: {
                     include: {
                         sectionImages: true,
