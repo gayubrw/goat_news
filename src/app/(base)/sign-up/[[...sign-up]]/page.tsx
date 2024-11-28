@@ -58,6 +58,28 @@ export default function SignUpPage() {
                             </div>
 
                             <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Clerk.Field name="firstName">
+                                        <div className="flex flex-col space-y-2 text-sm">
+                                            <Clerk.Label>First name</Clerk.Label>
+                                            <Clerk.Input asChild>
+                                                <Input className="h-9 rounded-lg" />
+                                            </Clerk.Input>
+                                            <Clerk.FieldError className="text-red-500" />
+                                        </div>
+                                    </Clerk.Field>
+
+                                    <Clerk.Field name="lastName">
+                                        <div className="flex flex-col space-y-2 text-sm">
+                                            <Clerk.Label>Last name</Clerk.Label>
+                                            <Clerk.Input asChild>
+                                                <Input className="h-9 rounded-lg" />
+                                            </Clerk.Input>
+                                            <Clerk.FieldError className="text-red-500" />
+                                        </div>
+                                    </Clerk.Field>
+                                </div>
+
                                 <Clerk.Field name="emailAddress">
                                     <div className="flex flex-col space-y-2 text-sm">
                                         <Clerk.Label>Email address</Clerk.Label>
