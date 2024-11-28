@@ -20,44 +20,51 @@ import {
     TwitterShareButton,
 } from '@/components/share-button';
 
-interface NewsPageParams {
-    params: {
-        categories: Promise<string>;
-        subcategories: Promise<string>;
-        news: Promise<string>;
-    };
-}
+type Params = {
+    categories: string;
+    subcategories: string;
+    news: string;
+};
 
-async function getNewsData(params: NewsPageParams['params']) {
-    const allNews = await getNews();
-    const [categories, subcategories, news] = await Promise.all([
-        params.categories,
-        params.subcategories,
-        params.news,
-    ]);
+async function getNewsData(
+    categories: string,
+    subcategories: string,
+    news: string
+) {
+    try {
+        const allNews = await getNews();
+        const newsItem = allNews.find((n) => n.path === news);
 
-    const newsItem = allNews.find((n) => n.path === news);
+        if (!newsItem) {
+            notFound();
+        }
 
-    if (!newsItem) {
+        if (
+            newsItem.subCategory.category.path !== categories ||
+            newsItem.subCategory.path !== subcategories
+        ) {
+            notFound();
+        }
+
+        return newsItem;
+    } catch (error) {
+        console.error('Error fetching news data:', error);
         notFound();
     }
-
-    // Verify category and subcategory paths match
-    if (
-        newsItem.subCategory.category.path !== categories ||
-        newsItem.subCategory.path !== subcategories
-    ) {
-        notFound();
-    }
-
-    return newsItem;
 }
 
 export async function generateMetadata({
-    params,
-}: NewsPageParams): Promise<Metadata> {
+    params: paramsPromise,
+}: {
+    params: Promise<Params>;
+}): Promise<Metadata> {
     try {
-        const newsData = await getNewsData(params);
+        const params = await paramsPromise;
+        const newsData = await getNewsData(
+            params.categories,
+            params.subcategories,
+            params.news
+        );
         let authorName = newsData.user.role || 'Author';
 
         try {
@@ -89,8 +96,17 @@ export async function generateMetadata({
     }
 }
 
-export default async function NewsPage({ params }: NewsPageParams) {
-    const newsData = await getNewsData(params);
+export default async function NewsPage({
+    params: paramsPromise,
+}: {
+    params: Promise<Params>;
+}) {
+    const params = await paramsPromise;
+    const newsData = await getNewsData(
+        params.categories,
+        params.subcategories,
+        params.news
+    );
     let authorData = null;
 
     try {
@@ -215,17 +231,17 @@ export default async function NewsPage({ params }: NewsPageParams) {
                                         <hr className="border-zinc-200 dark:border-zinc-800" />
                                     ) : (
                                         <>
+                                            {section.title && (
+                                                <h2 className="text-2xl font-semibold mb-4 text-foreground">
+                                                    {section.title}
+                                                </h2>
+                                            )}
                                             {section.sectionTexts.map(
                                                 (text) => (
                                                     <div
                                                         key={text.id}
                                                         className="prose prose-lg prose-zinc dark:prose-invert max-w-none"
                                                     >
-                                                        {text.title && (
-                                                            <h2>
-                                                                {text.title}
-                                                            </h2>
-                                                        )}
                                                         <div
                                                             dangerouslySetInnerHTML={{
                                                                 __html: text.text,
