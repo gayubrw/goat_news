@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { User, UserInteraction } from '@prisma/client';
 import { clerkClient } from '@/lib/clerk';
+import type { User as ClerkUser } from '@clerk/nextjs/server';
 
 // Types
 type UserBasic = Pick<
@@ -89,14 +90,10 @@ export async function getClerkUser(clerkId: string | null) {
 // Get all users with filters
 export async function getUsers(role: string = 'all', search: string = '') {
     try {
+        // First get all users matching the role filter
         const users = await prisma.user.findMany({
             where: {
                 ...(role !== 'all' ? { role } : {}),
-                ...(search
-                    ? {
-                          clerkId: { contains: search, mode: 'insensitive' },
-                      }
-                    : {}),
             },
             include: {
                 userInteractions: true,
@@ -108,19 +105,58 @@ export async function getUsers(role: string = 'all', search: string = '') {
             },
         });
 
-        // Fetch Clerk user data for each user
+        // Get all Clerk users that match the search term
+        let clerkUsers: ClerkUser[] = [];
+        if (search) {
+            try {
+                const response = await clerkClient.users.getUserList({
+                    query: search,
+                });
+                clerkUsers = response.data;
+            } catch (error) {
+                console.error('[GET_CLERK_USERS]', error);
+            }
+        }
+
+        // Create a Set of matching Clerk IDs for efficient lookup
+        const matchingClerkIds = new Set(clerkUsers.map(user => user.id));
+
+        // Fetch and enrich user data
         const enrichedUsers = await Promise.all(
             users.map(async (user) => {
                 const clerkUser = await getClerkUser(user.clerkId);
                 return {
                     ...user,
                     profile: clerkUser,
-                    contributionScore:
-                        user.userInteractions[0]?.contributionScore || 0,
+                    contributionScore: user.userInteractions[0]?.contributionScore || 0,
                     totalNews: user.news.length,
                 };
             })
         );
+
+        // Filter users based on search if provided
+        if (search && search.trim()) {
+            const searchLower = search.toLowerCase().trim();
+            return enrichedUsers.filter((user) => {
+                // Include user if their Clerk ID matches from the earlier search
+                if (user.clerkId && matchingClerkIds.has(user.clerkId)) {
+                    return true;
+                }
+
+                // Or if their profile data matches the search term
+                const firstName = user.profile?.firstName?.toLowerCase() || '';
+                const lastName = user.profile?.lastName?.toLowerCase() || '';
+                const email = user.profile?.email?.toLowerCase() || '';
+                const fullName = `${firstName} ${lastName}`.trim();
+
+                return (
+                    firstName.includes(searchLower) ||
+                    lastName.includes(searchLower) ||
+                    fullName.includes(searchLower) ||
+                    email.includes(searchLower)
+                );
+            });
+        }
 
         return enrichedUsers;
     } catch (error) {

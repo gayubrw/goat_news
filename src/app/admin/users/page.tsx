@@ -19,20 +19,24 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import {
     Search,
-    MoreVertical,
-    Ban,
+    Trash2,
     Mail,
     UserCheck,
-    Shield,
+    ShieldAlert
 } from 'lucide-react';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getUsers, updateUserRole, deleteUser } from '@/actions/user';
@@ -41,7 +45,7 @@ import { useToast } from '@/hooks/use-toast';
 interface EnrichedUser {
     id: string;
     clerkId: string | null;
-    role: string | null; // Changed to allow null
+    role: string | null;
     createdAt: string;
     updatedAt: string;
     profile: {
@@ -54,11 +58,111 @@ interface EnrichedUser {
     totalNews: number;
 }
 
+interface AdminPromoteDialogProps {
+    user: EnrichedUser;
+    onPromote: () => void;
+}
+
+const AdminPromoteDialog = ({ user, onPromote }: AdminPromoteDialogProps) => {
+    const [confirmEmail, setConfirmEmail] = useState('');
+    const userEmail = user.profile?.email || '';
+    const isValid = confirmEmail === userEmail;
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs hover:bg-yellow-100 hover:text-yellow-800 dark:hover:bg-yellow-900 dark:hover:text-yellow-200"
+                >
+                    <ShieldAlert className="h-3 w-3 mr-1" />
+                    Make Admin
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-xl">Promote to Admin</AlertDialogTitle>
+                    <div className="space-y-4">
+                        <div className="text-sm text-muted-foreground">
+                            You are about to promote <span className="font-semibold text-foreground">{user.profile?.firstName} {user.profile?.lastName}</span> to admin role.
+                            This will grant them full administrative privileges.
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="confirm-email" className="text-sm font-medium">
+                                Please enter the user&apos;s email to confirm:
+                            </Label>
+                            <Input
+                                id="confirm-email"
+                                type="email"
+                                placeholder={userEmail}
+                                value={confirmEmail}
+                                onChange={(e) => setConfirmEmail(e.target.value)}
+                                className="w-full"
+                            />
+                            {confirmEmail && !isValid && (
+                                <p className="text-xs text-destructive">Email does not match</p>
+                            )}
+                        </div>
+                    </div>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={onPromote}
+                        disabled={!isValid}
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                    >
+                        Promote to Admin
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+};
+
+const DeleteConfirmDialog = ({
+    onConfirm,
+    user
+}: {
+    onConfirm: () => void;
+    user: EnrichedUser
+}) => (
+    <AlertDialog>
+        <AlertDialogTrigger asChild>
+            <Button
+                variant="ghost"
+                size="icon"
+                className="hover:bg-destructive/10 hover:text-destructive"
+            >
+                <Trash2 className="h-4 w-4" />
+            </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Delete User</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Are you sure you want to delete {user.profile?.firstName} {user.profile?.lastName}?
+                    This action cannot be undone and will permanently remove the user and all associated data.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                    onClick={onConfirm}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                    Delete
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+);
+
 const UsersPage = () => {
     const [users, setUsers] = useState<EnrichedUser[]>([]);
     const [filterRole, setFilterRole] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-    // const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
     const loadUsers = useCallback(async () => {
@@ -81,25 +185,19 @@ const UsersPage = () => {
     }, [filterRole, searchTerm, toast]);
 
     useEffect(() => {
-        const debounce = setTimeout(loadUsers, 300);
+        const debounce = setTimeout(loadUsers, 200);
         return () => clearTimeout(debounce);
-    }, [filterRole, searchTerm, loadUsers]); // Added loadUsers
+    }, [filterRole, searchTerm, loadUsers]);
 
     const handleRoleChange = async (userId: string, newRole: string) => {
-        if (newRole === 'admin') {
-            // Optional: Add confirmation dialog for making admin
-            const confirm = window.confirm(
-                'Are you sure you want to make this user an admin?'
-            );
-            if (!confirm) return;
-        }
-
         try {
             await updateUserRole(userId, newRole);
             await loadUsers();
             toast({
                 title: 'Success',
-                description: 'User role updated successfully',
+                description: newRole === 'admin'
+                    ? 'User has been promoted to admin successfully'
+                    : 'User role updated successfully',
             });
         } catch (error) {
             console.error(error);
@@ -131,8 +229,7 @@ const UsersPage = () => {
 
     const stats = {
         totalUsers: users.length,
-        activeUsers: users.filter((user) => user.contributionScore > 100)
-            .length,
+        activeUsers: users.filter((user) => user.contributionScore > 100).length,
         contentCreators: users.filter((user) => user.totalNews > 0).length,
     };
 
@@ -162,12 +259,8 @@ const UsersPage = () => {
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground">
-                            {stats.totalUsers}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Registered users
-                        </p>
+                        <div className="text-2xl font-bold text-foreground">{stats.totalUsers}</div>
+                        <p className="text-xs text-muted-foreground">Registered users</p>
                     </CardContent>
                 </Card>
                 <Card className="border-border bg-card">
@@ -178,12 +271,8 @@ const UsersPage = () => {
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground">
-                            {stats.activeUsers}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            High contribution score
-                        </p>
+                        <div className="text-2xl font-bold text-foreground">{stats.activeUsers}</div>
+                        <p className="text-xs text-muted-foreground">High contribution score</p>
                     </CardContent>
                 </Card>
                 <Card className="border-border bg-card">
@@ -194,12 +283,8 @@ const UsersPage = () => {
                         <Mail className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground">
-                            {stats.contentCreators}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Users with news content
-                        </p>
+                        <div className="text-2xl font-bold text-foreground">{stats.contentCreators}</div>
+                        <p className="text-xs text-muted-foreground">Users with news content</p>
                     </CardContent>
                 </Card>
             </div>
@@ -234,27 +319,13 @@ const UsersPage = () => {
                 <Table>
                     <TableHeader>
                         <TableRow className="border-border hover:bg-muted/50">
-                            <TableHead className="text-muted-foreground">
-                                User
-                            </TableHead>
-                            <TableHead className="text-muted-foreground">
-                                Email
-                            </TableHead>
-                            <TableHead className="text-muted-foreground">
-                                Role
-                            </TableHead>
-                            <TableHead className="text-muted-foreground">
-                                News
-                            </TableHead>
-                            <TableHead className="text-muted-foreground">
-                                Contribution
-                            </TableHead>
-                            <TableHead className="text-muted-foreground">
-                                Register Date
-                            </TableHead>
-                            <TableHead className="text-muted-foreground text-right">
-                                Actions
-                            </TableHead>
+                            <TableHead className="text-muted-foreground">User</TableHead>
+                            <TableHead className="text-muted-foreground">Email</TableHead>
+                            <TableHead className="text-muted-foreground">Role</TableHead>
+                            <TableHead className="text-muted-foreground">News</TableHead>
+                            <TableHead className="text-muted-foreground">Contribution</TableHead>
+                            <TableHead className="text-muted-foreground">Register Date</TableHead>
+                            <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -274,33 +345,14 @@ const UsersPage = () => {
                                         </AvatarFallback>
                                     </Avatar>
                                     <span className="font-medium text-foreground">
-                                        {user.profile?.firstName}{' '}
-                                        {user.profile?.lastName}
+                                        {user.profile?.firstName} {user.profile?.lastName}
                                     </span>
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">
                                     {user.profile?.email}
                                 </TableCell>
-                                <TableCell>
-                                    <Select
-                                        value={user.role || 'user'}
-                                        onValueChange={(newRole) =>
-                                            handleRoleChange(user.id, newRole)
-                                        }
-                                        disabled={user.role === 'admin'} // Prevent changing admin role
-                                    >
-                                        <SelectTrigger className="w-[110px]">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="admin">
-                                                Admin
-                                            </SelectItem>
-                                            <SelectItem value="user">
-                                                User
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                <TableCell className="text-muted-foreground">
+                                    {user.role || 'User'}
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">
                                     {user.totalNews}
@@ -311,10 +363,7 @@ const UsersPage = () => {
                                             <div
                                                 className="h-full bg-primary"
                                                 style={{
-                                                    width: `${Math.min(
-                                                        100,
-                                                        user.contributionScore
-                                                    )}%`,
+                                                    width: `${Math.min(100, user.contributionScore)}%`,
                                                 }}
                                             />
                                         </div>
@@ -324,64 +373,25 @@ const UsersPage = () => {
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">
-                                    {new Date(
-                                        user.createdAt
-                                    ).toLocaleDateString('en-US', {
+                                    {new Date(user.createdAt).toLocaleDateString('en-US', {
                                         day: 'numeric',
                                         month: 'long',
                                         year: 'numeric',
                                     })}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                className="h-8 w-8 p-0 hover:bg-muted"
-                                            >
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent
-                                            align="end"
-                                            className="bg-background border-border"
-                                        >
-                                            <DropdownMenuItem
-                                                className="flex items-center gap-2 hover:bg-muted"
-                                                onClick={() =>
-                                                    handleRoleChange(
-                                                        user.id,
-                                                        'admin'
-                                                    )
-                                                }
-                                            >
-                                                <Shield size={16} />
-                                                Make Admin
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                className="flex items-center gap-2 hover:bg-muted"
-                                                onClick={() =>
-                                                    handleRoleChange(
-                                                        user.id,
-                                                        'user'
-                                                    )
-                                                }
-                                            >
-                                                <UserCheck size={16} />
-                                                Make User
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator className="bg-border" />
-                                            <DropdownMenuItem
-                                                className="flex items-center gap-2 text-destructive hover:bg-muted"
-                                                onClick={() =>
-                                                    handleDeleteUser(user.id)
-                                                }
-                                            >
-                                                <Ban size={16} />
-                                                Delete User
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    <div className="flex items-center justify-end gap-2">
+                                        {user.role !== 'admin' && (
+                                            <AdminPromoteDialog
+                                                user={user}
+                                                onPromote={() => handleRoleChange(user.id, 'admin')}
+                                            />
+                                        )}
+                                        <DeleteConfirmDialog
+                                            user={user}
+                                            onConfirm={() => handleDeleteUser(user.id)}
+                                        />
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
