@@ -28,15 +28,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import {
-    Search,
-    Trash2,
-    Mail,
-    UserCheck,
-    ShieldAlert
-} from 'lucide-react';
+} from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
+import { Search, Trash2, Mail, UserCheck, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getUsers, updateUserRole, deleteUser } from '@/actions/user';
@@ -82,14 +76,24 @@ const AdminPromoteDialog = ({ user, onPromote }: AdminPromoteDialogProps) => {
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="text-xl">Promote to Admin</AlertDialogTitle>
+                    <AlertDialogTitle className="text-xl">
+                        Promote to Admin
+                    </AlertDialogTitle>
                     <div className="space-y-4">
                         <div className="text-sm text-muted-foreground">
-                            You are about to promote <span className="font-semibold text-foreground">{user.profile?.firstName} {user.profile?.lastName}</span> to admin role.
-                            This will grant them full administrative privileges.
+                            You are about to promote{' '}
+                            <span className="font-semibold text-foreground">
+                                {user.profile?.firstName}{' '}
+                                {user.profile?.lastName}
+                            </span>{' '}
+                            to admin role. This will grant them full
+                            administrative privileges.
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="confirm-email" className="text-sm font-medium">
+                            <Label
+                                htmlFor="confirm-email"
+                                className="text-sm font-medium"
+                            >
                                 Please enter the user&apos;s email to confirm:
                             </Label>
                             <Input
@@ -97,11 +101,15 @@ const AdminPromoteDialog = ({ user, onPromote }: AdminPromoteDialogProps) => {
                                 type="email"
                                 placeholder={userEmail}
                                 value={confirmEmail}
-                                onChange={(e) => setConfirmEmail(e.target.value)}
+                                onChange={(e) =>
+                                    setConfirmEmail(e.target.value)
+                                }
                                 className="w-full"
                             />
                             {confirmEmail && !isValid && (
-                                <p className="text-xs text-destructive">Email does not match</p>
+                                <p className="text-xs text-destructive">
+                                    Email does not match
+                                </p>
                             )}
                         </div>
                     </div>
@@ -123,10 +131,10 @@ const AdminPromoteDialog = ({ user, onPromote }: AdminPromoteDialogProps) => {
 
 const DeleteConfirmDialog = ({
     onConfirm,
-    user
+    user,
 }: {
     onConfirm: () => void;
-    user: EnrichedUser
+    user: EnrichedUser;
 }) => (
     <AlertDialog>
         <AlertDialogTrigger asChild>
@@ -142,8 +150,9 @@ const DeleteConfirmDialog = ({
             <AlertDialogHeader>
                 <AlertDialogTitle>Delete User</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Are you sure you want to delete {user.profile?.firstName} {user.profile?.lastName}?
-                    This action cannot be undone and will permanently remove the user and all associated data.
+                    Are you sure you want to delete {user.profile?.firstName}{' '}
+                    {user.profile?.lastName}? This action cannot be undone and
+                    will permanently remove the user and all associated data.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -195,9 +204,10 @@ const UsersPage = () => {
             await loadUsers();
             toast({
                 title: 'Success',
-                description: newRole === 'admin'
-                    ? 'User has been promoted to admin successfully'
-                    : 'User role updated successfully',
+                description:
+                    newRole === 'admin'
+                        ? 'User has been promoted to admin successfully'
+                        : 'User role updated successfully',
             });
         } catch (error) {
             console.error(error);
@@ -229,7 +239,8 @@ const UsersPage = () => {
 
     const stats = {
         totalUsers: users.length,
-        activeUsers: users.filter((user) => user.contributionScore > 100).length,
+        activeUsers: users.filter((user) => user.contributionScore > 100)
+            .length,
         contentCreators: users.filter((user) => user.totalNews > 0).length,
     };
 
@@ -259,8 +270,12 @@ const UsersPage = () => {
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground">{stats.totalUsers}</div>
-                        <p className="text-xs text-muted-foreground">Registered users</p>
+                        <div className="text-2xl font-bold text-foreground">
+                            {stats.totalUsers}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Registered users
+                        </p>
                     </CardContent>
                 </Card>
                 <Card className="border-border bg-card">
@@ -271,8 +286,12 @@ const UsersPage = () => {
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground">{stats.activeUsers}</div>
-                        <p className="text-xs text-muted-foreground">High contribution score</p>
+                        <div className="text-2xl font-bold text-foreground">
+                            {stats.activeUsers}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            High contribution score
+                        </p>
                     </CardContent>
                 </Card>
                 <Card className="border-border bg-card">
@@ -283,8 +302,12 @@ const UsersPage = () => {
                         <Mail className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground">{stats.contentCreators}</div>
-                        <p className="text-xs text-muted-foreground">Users with news content</p>
+                        <div className="text-2xl font-bold text-foreground">
+                            {stats.contentCreators}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Users with news content
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -319,13 +342,27 @@ const UsersPage = () => {
                 <Table>
                     <TableHeader>
                         <TableRow className="border-border hover:bg-muted/50">
-                            <TableHead className="text-muted-foreground">User</TableHead>
-                            <TableHead className="text-muted-foreground">Email</TableHead>
-                            <TableHead className="text-muted-foreground">Role</TableHead>
-                            <TableHead className="text-muted-foreground">News</TableHead>
-                            <TableHead className="text-muted-foreground">Contribution</TableHead>
-                            <TableHead className="text-muted-foreground">Register Date</TableHead>
-                            <TableHead className="text-muted-foreground text-right">Actions</TableHead>
+                            <TableHead className="text-muted-foreground w-72">
+                                User
+                            </TableHead>
+                            <TableHead className="text-muted-foreground">
+                                Email
+                            </TableHead>
+                            <TableHead className="text-muted-foreground">
+                                Role
+                            </TableHead>
+                            <TableHead className="text-muted-foreground">
+                                News
+                            </TableHead>
+                            <TableHead className="text-muted-foreground">
+                                Contribution
+                            </TableHead>
+                            <TableHead className="text-muted-foreground">
+                                Register Date
+                            </TableHead>
+                            <TableHead className="text-muted-foreground text-right">
+                                Actions
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -334,25 +371,37 @@ const UsersPage = () => {
                                 key={user.id}
                                 className="border-border hover:bg-muted/50"
                             >
-                                <TableCell className="flex items-center gap-3">
-                                    <Avatar>
+                                <TableCell className="flex items-center gap-4">
+                                    <Avatar className="h-12 w-12">
                                         <AvatarImage
                                             src={user.profile?.imageUrl}
                                             alt={user.profile?.firstName || ''}
+                                            className="object-cover"
                                         />
-                                        <AvatarFallback className="bg-muted text-muted-foreground">
+                                        <AvatarFallback className="bg-muted text-muted-foreground text-lg">
                                             {getInitials(user)}
                                         </AvatarFallback>
                                     </Avatar>
-                                    <span className="font-medium text-foreground">
-                                        {user.profile?.firstName} {user.profile?.lastName}
-                                    </span>
+                                    <div className="flex flex-col">
+                                        <span className="font-medium text-foreground">
+                                            {user.profile?.firstName}{' '}
+                                            {user.profile?.lastName}
+                                        </span>
+                                    </div>
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">
                                     {user.profile?.email}
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">
-                                    {user.role || 'User'}
+                                <TableCell>
+                                    <span
+                                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            user.role === 'admin'
+                                                ? 'bg-primary/10 text-primary'
+                                                : 'bg-muted text-muted-foreground'
+                                        }`}
+                                    >
+                                        {user.role || 'User'}
+                                    </span>
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">
                                     {user.totalNews}
@@ -363,7 +412,10 @@ const UsersPage = () => {
                                             <div
                                                 className="h-full bg-primary"
                                                 style={{
-                                                    width: `${Math.min(100, user.contributionScore)}%`,
+                                                    width: `${Math.min(
+                                                        100,
+                                                        user.contributionScore
+                                                    )}%`,
                                                 }}
                                             />
                                         </div>
@@ -373,7 +425,9 @@ const UsersPage = () => {
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">
-                                    {new Date(user.createdAt).toLocaleDateString('en-US', {
+                                    {new Date(
+                                        user.createdAt
+                                    ).toLocaleDateString('en-US', {
                                         day: 'numeric',
                                         month: 'long',
                                         year: 'numeric',
@@ -384,12 +438,19 @@ const UsersPage = () => {
                                         {user.role !== 'admin' && (
                                             <AdminPromoteDialog
                                                 user={user}
-                                                onPromote={() => handleRoleChange(user.id, 'admin')}
+                                                onPromote={() =>
+                                                    handleRoleChange(
+                                                        user.id,
+                                                        'admin'
+                                                    )
+                                                }
                                             />
                                         )}
                                         <DeleteConfirmDialog
                                             user={user}
-                                            onConfirm={() => handleDeleteUser(user.id)}
+                                            onConfirm={() =>
+                                                handleDeleteUser(user.id)
+                                            }
                                         />
                                     </div>
                                 </TableCell>

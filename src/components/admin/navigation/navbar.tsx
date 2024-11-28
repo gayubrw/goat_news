@@ -44,7 +44,11 @@ interface NavbarProps {
     setSidebarOpen: (open: boolean) => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }) => {
+const Navbar: React.FC<NavbarProps> = ({
+    sidebarOpen,
+    isMobile,
+    setSidebarOpen,
+}) => {
     const { user } = useUser();
     const { signOut } = useAuth();
     const router = useRouter();
@@ -62,9 +66,15 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }
 
     const getInitials = () => {
         if (!user?.firstName && !user?.lastName) {
-            return user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?';
+            return (
+                user?.emailAddresses[0]?.emailAddress
+                    ?.charAt(0)
+                    .toUpperCase() || '?'
+            );
         }
-        return `${user?.firstName?.charAt(0) || ''}${user?.lastName?.charAt(0) || ''}`;
+        return `${user?.firstName?.charAt(0) || ''}${
+            user?.lastName?.charAt(0) || ''
+        }`;
     };
 
     return (
@@ -123,25 +133,34 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }
                                     variant="ghost"
                                     className="relative h-9 w-9 rounded-full"
                                 >
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User"} />
-                                        <AvatarFallback>{getInitials()}</AvatarFallback>
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage
+                                            src={user?.imageUrl}
+                                            alt={user?.fullName || 'User'}
+                                            className="object-cover"
+                                        />
+                                        <AvatarFallback>
+                                            {getInitials()}
+                                        </AvatarFallback>
                                     </Avatar>
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                className="w-56"
-                                align="end"
-                            >
+                            <DropdownMenuContent className="w-56" align="end">
                                 <DropdownMenuLabel>
                                     <div className="flex flex-col space-y-1">
                                         <p className="text-sm font-medium">
                                             {user?.firstName} {user?.lastName}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                            {user?.emailAddresses[0]?.emailAddress}
+                                            {
+                                                user?.emailAddresses[0]
+                                                    ?.emailAddress
+                                            }
                                         </p>
-                                        <Badge variant="outline" className="w-fit mt-1">
+                                        <Badge
+                                            variant="outline"
+                                            className="w-fit mt-1"
+                                        >
                                             Admin
                                         </Badge>
                                     </div>
@@ -149,25 +168,37 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }
                                 <DropdownMenuSeparator />
                                 <DropdownMenuGroup>
                                     <DropdownMenuItem asChild>
-                                        <Link href="/admin" className="flex items-center">
+                                        <Link
+                                            href="/admin"
+                                            className="flex items-center"
+                                        >
                                             <LayoutDashboard className="w-4 h-4 mr-2" />
                                             Admin Panel
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
-                                        <Link href="/profile" className="flex items-center">
+                                        <Link
+                                            href="/profile"
+                                            className="flex items-center"
+                                        >
                                             <User className="w-4 h-4 mr-2" />
                                             Profile
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
-                                        <Link href="/settings" className="flex items-center">
+                                        <Link
+                                            href="/settings"
+                                            className="flex items-center"
+                                        >
                                             <Settings className="w-4 h-4 mr-2" />
                                             Settings
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
-                                        <Link href="/" className="flex items-center">
+                                        <Link
+                                            href="/"
+                                            className="flex items-center"
+                                        >
                                             <Newspaper className="w-4 h-4 mr-2" />
                                             Goat News
                                         </Link>
@@ -187,18 +218,19 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }
                 </div>
             </header>
 
-
             <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
                 <DialogTitle>
                     <CommandInput placeholder="Type a command or search..." />
                 </DialogTitle>
-                <CommandList className={isMobile ? "h-[60vh]" : ""}>
+                <CommandList className={isMobile ? 'h-[60vh]' : ''}>
                     <CommandEmpty>No results found.</CommandEmpty>
                     <CommandGroup heading="Suggestions">
                         <CommandItem>
                             <User className="mr-2 h-4 w-4" />
                             <span>Profile</span>
-                            {!isMobile && <CommandShortcut>⇧⌘P</CommandShortcut>}
+                            {!isMobile && (
+                                <CommandShortcut>⇧⌘P</CommandShortcut>
+                            )}
                         </CommandItem>
                         <CommandItem>
                             <Settings className="mr-2 h-4 w-4" />

@@ -15,7 +15,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -24,24 +24,24 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
     Sheet,
     SheetContent,
     SheetHeader,
     SheetTitle,
     SheetTrigger,
-} from "@/components/ui/sheet";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/sheet';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
     CommandDialog,
     CommandInput,
     CommandList,
     CommandGroup,
     CommandItem,
-    CommandEmpty
-} from "@/components/ui/command";
+    CommandEmpty,
+} from '@/components/ui/command';
 import { DialogTitle } from '@/components/ui/dialog';
 import { getCategories } from '@/actions/category';
 import type { Category } from '@/types';
@@ -72,9 +72,15 @@ const Navbar = () => {
 
     const getInitials = () => {
         if (!user?.firstName && !user?.lastName) {
-            return user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?';
+            return (
+                user?.emailAddresses[0]?.emailAddress
+                    ?.charAt(0)
+                    .toUpperCase() || '?'
+            );
         }
-        return `${user?.firstName?.charAt(0) || ''}${user?.lastName?.charAt(0) || ''}`;
+        return `${user?.firstName?.charAt(0) || ''}${
+            user?.lastName?.charAt(0) || ''
+        }`;
     };
 
     useEffect(() => {
@@ -113,10 +119,10 @@ const Navbar = () => {
 
     const menuItems = [
         { label: 'Home', href: '/' },
-        ...categories.map(category => ({
+        ...categories.map((category) => ({
             label: category.title,
             href: `/${category.path}`,
-        }))
+        })),
     ];
 
     const getCurrentPageLabel = () => {
@@ -125,7 +131,9 @@ const Navbar = () => {
         const currentMenuItem = menuItems.find(
             (item) => item.href === `/${category}`
         );
-        return currentMenuItem?.label !== 'Home' ? currentMenuItem?.label : null;
+        return currentMenuItem?.label !== 'Home'
+            ? currentMenuItem?.label
+            : null;
     };
 
     const handleLogout = async () => {
@@ -135,7 +143,7 @@ const Navbar = () => {
 
     const SearchCommand = () => (
         <CommandDialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-            <DialogTitle className='sr-only'>
+            <DialogTitle className="sr-only">
                 <div id="search-title">Search Articles</div>
             </DialogTitle>
             <CommandInput
@@ -166,7 +174,10 @@ const Navbar = () => {
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                     <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.imageUrl} />
+                        <AvatarImage
+                            src={user?.imageUrl}
+                            className="object-cover"
+                        />
                         <AvatarFallback>{getInitials()}</AvatarFallback>
                     </Avatar>
                 </Button>
@@ -260,12 +271,16 @@ const Navbar = () => {
                                     return (
                                         <Button
                                             key={item.label}
-                                            variant={isActive ? "secondary" : "ghost"}
+                                            variant={
+                                                isActive ? 'secondary' : 'ghost'
+                                            }
                                             size="sm"
                                             className="text-sm"
                                             asChild
                                         >
-                                            <Link href={item.href}>{item.label}</Link>
+                                            <Link href={item.href}>
+                                                {item.label}
+                                            </Link>
                                         </Button>
                                     );
                                 })
@@ -289,7 +304,12 @@ const Navbar = () => {
                         {isSignedIn ? (
                             <ProfileDropdown />
                         ) : (
-                            <Button variant="ghost" size="icon" asChild className="rounded-full">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                asChild
+                                className="rounded-full"
+                            >
                                 <Link href="/sign-in">
                                     <UserCircle2 className="h-5 w-5" />
                                 </Link>
@@ -312,27 +332,43 @@ const Navbar = () => {
                                     <SheetTitle>Menu</SheetTitle>
                                 </SheetHeader>
                                 <div className="flex flex-col gap-4 mt-4">
-                                    {isLoading ? (
-                                        Array(5).fill(0).map((_, i) => (
-                                            <div key={i} className="h-10 bg-muted animate-pulse rounded-md" />
-                                        ))
-                                    ) : (
-                                        menuItems.map((item) => {
-                                            const isActive = isRouteActive(item.href);
-                                            return (
-                                                <Button
-                                                    key={item.label}
-                                                    variant={isActive ? "secondary" : "ghost"}
-                                                    className="w-full justify-start"
-                                                    asChild
-                                                >
-                                                    <Link href={item.href} onClick={() => setIsMenuOpen(false)}>
-                                                        {item.label}
-                                                    </Link>
-                                                </Button>
-                                            );
-                                        })
-                                    )}
+                                    {isLoading
+                                        ? Array(5)
+                                              .fill(0)
+                                              .map((_, i) => (
+                                                  <div
+                                                      key={i}
+                                                      className="h-10 bg-muted animate-pulse rounded-md"
+                                                  />
+                                              ))
+                                        : menuItems.map((item) => {
+                                              const isActive = isRouteActive(
+                                                  item.href
+                                              );
+                                              return (
+                                                  <Button
+                                                      key={item.label}
+                                                      variant={
+                                                          isActive
+                                                              ? 'secondary'
+                                                              : 'ghost'
+                                                      }
+                                                      className="w-full justify-start"
+                                                      asChild
+                                                  >
+                                                      <Link
+                                                          href={item.href}
+                                                          onClick={() =>
+                                                              setIsMenuOpen(
+                                                                  false
+                                                              )
+                                                          }
+                                                      >
+                                                          {item.label}
+                                                      </Link>
+                                                  </Button>
+                                              );
+                                          })}
 
                                     {isSignedIn && (
                                         <>
@@ -343,7 +379,12 @@ const Navbar = () => {
                                                     className="w-full justify-start"
                                                     asChild
                                                 >
-                                                    <Link href="/admin" onClick={() => setIsMenuOpen(false)}>
+                                                    <Link
+                                                        href="/admin"
+                                                        onClick={() =>
+                                                            setIsMenuOpen(false)
+                                                        }
+                                                    >
                                                         <LayoutDashboard className="w-4 h-4 mr-2" />
                                                         Admin Panel
                                                     </Link>
@@ -354,7 +395,12 @@ const Navbar = () => {
                                                 className="w-full justify-start"
                                                 asChild
                                             >
-                                                <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
+                                                <Link
+                                                    href="/profile"
+                                                    onClick={() =>
+                                                        setIsMenuOpen(false)
+                                                    }
+                                                >
                                                     <User className="w-4 h-4 mr-2" />
                                                     Profile
                                                 </Link>
@@ -364,7 +410,12 @@ const Navbar = () => {
                                                 className="w-full justify-start"
                                                 asChild
                                             >
-                                                <Link href="/settings" onClick={() => setIsMenuOpen(false)}>
+                                                <Link
+                                                    href="/settings"
+                                                    onClick={() =>
+                                                        setIsMenuOpen(false)
+                                                    }
+                                                >
                                                     <Settings className="w-4 h-4 mr-2" />
                                                     Settings
                                                 </Link>

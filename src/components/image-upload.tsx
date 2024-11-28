@@ -1,188 +1,219 @@
-'use client'
+'use client';
 
-import { useCallback, useState, useTransition } from 'react'
-import { Upload, Loader2, X, ImageIcon } from 'lucide-react'
-import Image from 'next/image'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { uploadImage } from '@/actions/upload'
-import { cn } from '@/lib/utils'
+import { useCallback, useState } from 'react';
+import { Camera, Loader2, X } from 'lucide-react';
+import Image from 'next/image';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { uploadImage, deleteProfileImage } from '@/actions/profile';
 
 interface ImageUploadFieldProps {
-  onUploadComplete: (url: string) => void
-  value?: string
-  label?: string
+    onUploadComplete: (url: string) => void;
+    value?: string;
+    label?: string;
 }
 
-export function ImageUploadField({ onUploadComplete, value, label = "Image" }: ImageUploadFieldProps) {
-  const [isPending, startTransition] = useTransition()
-  const [preview, setPreview] = useState<string | null>(value || null)
-  const [isDragging, setIsDragging] = useState(false)
+export function ImageUploadField({
+    onUploadComplete,
+    value,
+    label = 'Image',
+}: ImageUploadFieldProps) {
+    const [isPending, setIsPending] = useState(false);
+    const [preview, setPreview] = useState<string | null>(value || null);
+    const [isDragging, setIsDragging] = useState(false);
 
-  const handleUpload = useCallback(
-    async (file: File) => {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please upload an image file')
-        return
-      }
+    const handleUpload = useCallback(
+        async (file: File) => {
+            try {
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    toast.error('Please upload an image file');
+                    return;
+                }
 
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size must be less than 5MB')
-        return
-      }
+                // Validate file size (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    toast.error('File size must be less than 5MB');
+                    return;
+                }
 
-      // Create preview immediately
-      const reader = new FileReader()
-      reader.onload = () => {
-        setPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+                setIsPending(true);
 
-      // Upload file
-      startTransition(async () => {
-        try {
-          const formData = new FormData()
-          formData.append('file', file)
-          const result = await uploadImage(formData)
+                // Create preview immediately
+                const reader = new FileReader();
+                reader.onload = () => {
+                    setPreview(reader.result as string);
+                };
+                reader.readAsDataURL(file);
 
-          if (!result.success) {
-            toast.error(result.error)
-            return
-          }
+                // Upload file
+                const formData = new FormData();
+                formData.append('file', file);
+                const result = await uploadImage(formData);
 
-          onUploadComplete(result.url)
-          toast.success('Image uploaded successfully')
-        } catch (error) {
-          toast.error('Failed to upload image')
-          console.error(error)
-        }
-      })
-    },
-    [onUploadComplete]
-  )
+                if (!result.success) {
+                    toast.error(result.error || 'Failed to upload image');
+                    return;
+                }
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      setIsDragging(false)
-
-      const file = e.dataTransfer.files[0]
-      if (file) {
-        handleUpload(file)
-      }
-    },
-    [handleUpload]
-  )
-
-  const handleRemove = useCallback(() => {
-    setPreview(null)
-    onUploadComplete('')
-  }, [onUploadComplete])
-
-  return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-
-      <div
-        className={cn(
-          "relative rounded-lg border-2 border-dashed border-muted-foreground/25 transition-colors",
-          isDragging && "border-primary/50 bg-muted/50",
-          preview && "border-none"
-        )}
-        onDragOver={(e) => {
-          e.preventDefault()
-          setIsDragging(true)
-        }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
-      >
-        {preview ? (
-          <div className="group relative aspect-video">
-            <Image
-              src={preview}
-              alt="Preview"
-              fill
-              className="rounded-lg object-cover"
-            />
-            <div className="absolute inset-0 hidden items-center justify-center gap-2 rounded-lg bg-black/50 group-hover:flex">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="h-8 px-2"
-                onClick={() => document.getElementById('file-upload')?.click()}
-                disabled={isPending}
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Change
-                  </>
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="h-8 px-2"
-                onClick={handleRemove}
-                disabled={isPending}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-            <div className="rounded-full bg-muted p-4">
-              <ImageIcon className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <div className="text-sm">
-              <Button
-                variant="link"
-                className="p-0 text-primary"
-                disabled={isPending}
-                onClick={() => document.getElementById('file-upload')?.click()}
-              >
-                Choose a file
-              </Button>{' '}
-              <span className="text-muted-foreground">
-                or drag and drop
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              PNG, JPG or JPEG (max 5MB)
-            </p>
-            {isPending && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Uploading...
-              </div>
-            )}
-          </div>
-        )}
-
-        <input
-          id="file-upload"
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) {
-              handleUpload(file)
+                // Call the callback with the new URL
+                if (result.url) {
+                    onUploadComplete(result.url);
+                    setPreview(result.url);
+                }
+                toast.success('Image uploaded successfully');
+            } catch (error) {
+                console.error('Upload error:', error);
+                toast.error('Failed to upload image');
+            } finally {
+                setIsPending(false);
             }
-          }}
-        />
-      </div>
-    </div>
-  )
+        },
+        [onUploadComplete]
+    );
+
+    const handleRemove = useCallback(async () => {
+        try {
+            setIsPending(true);
+            const result = await deleteProfileImage();
+
+            if (!result.success) {
+                toast.error(result.error || 'Failed to delete profile image');
+                return;
+            }
+
+            // Clear the preview immediately
+            setPreview(null);
+            // Pass empty string to parent component
+            onUploadComplete('');
+
+            toast.success('Profile image removed successfully');
+        } catch (error) {
+            console.error('Remove error:', error);
+            toast.error('Failed to remove profile image');
+        } finally {
+            setIsPending(false);
+        }
+    }, [onUploadComplete]);
+
+    const handleDrop = useCallback(
+        (e: React.DragEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            setIsDragging(false);
+
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                handleUpload(file);
+            }
+        },
+        [handleUpload]
+    );
+
+    return (
+        <div className="space-y-2">
+            {label && <Label>{label}</Label>}
+
+            <div className="relative">
+                {/* Main Image Preview */}
+                <div
+                    className={`relative h-64 w-64 overflow-hidden rounded-full border-4 border-zinc-200 dark:border-zinc-800 ${
+                        !preview && 'bg-muted'
+                    }`}
+                >
+                    {preview ? (
+                        <Image
+                            src={preview}
+                            alt="Preview"
+                            fill
+                            className="object-cover"
+                        />
+                    ) : (
+                        <div className="flex h-full items-center justify-center">
+                            <Camera className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Overlay Controls - Always Visible */}
+                <div className="absolute bottom-0 right-0">
+                    <div className="flex gap-2">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            className="h-10 w-10 rounded-full bg-white dark:bg-zinc-800 shadow-lg"
+                            onClick={() =>
+                                document.getElementById('file-upload')?.click()
+                            }
+                            disabled={isPending}
+                        >
+                            {isPending ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            ) : (
+                                <Camera className="h-5 w-5 text-primary" />
+                            )}
+                        </Button>
+                        {preview && (
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="h-10 w-10 rounded-full shadow-lg"
+                                onClick={handleRemove}
+                                disabled={isPending}
+                            >
+                                <X className="h-5 w-5" />
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Hidden File Input */}
+                <input
+                    id="file-upload"
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                            handleUpload(file);
+                            e.target.value = ''; // Reset input
+                        }
+                    }}
+                />
+
+                {/* Upload Status */}
+                {isPending && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                        <div className="text-sm text-white flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {preview ? 'Removing...' : 'Uploading...'}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Hidden drag and drop target */}
+            <div
+                className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 ${
+                    isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                } transition-opacity`}
+                onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+            >
+                <div className="rounded-lg border-2 border-dashed border-white p-8 text-center text-white">
+                    <p className="text-lg font-medium">Drop your image here</p>
+                    <p className="text-sm text-zinc-400">
+                        PNG, JPG or JPEG (max 5MB)
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
 }
