@@ -58,6 +58,18 @@ const Navbar = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [userRole, setUserRole] = useState<string | null>(null);
 
+    const isRouteActive = (itemHref: string) => {
+        if (itemHref === '/') {
+            return pathname === '/';
+        }
+        // Extract the category path from itemHref (removing the leading slash)
+        const categoryPath = itemHref.slice(1);
+        // Get the first segment of the current pathname
+        const currentCategory = pathname.split('/')[1];
+        // Compare the category paths
+        return categoryPath === currentCategory;
+    };
+
     const getInitials = () => {
         if (!user?.firstName && !user?.lastName) {
             return user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?';
@@ -244,9 +256,7 @@ const Navbar = () => {
                                 <div className="h-9 w-64 bg-muted animate-pulse rounded-md" />
                             ) : (
                                 menuItems.map((item) => {
-                                    const isActive = item.href === '/' 
-                                        ? pathname === '/' 
-                                        : pathname === item.href || pathname === `${item.href}/`;
+                                    const isActive = isRouteActive(item.href);
                                     return (
                                         <Button
                                             key={item.label}
@@ -308,9 +318,7 @@ const Navbar = () => {
                                         ))
                                     ) : (
                                         menuItems.map((item) => {
-                                            const isActive = item.href === '/' 
-                                                ? pathname === '/' 
-                                                : pathname === item.href || pathname === `${item.href}/`;
+                                            const isActive = isRouteActive(item.href);
                                             return (
                                                 <Button
                                                     key={item.label}
