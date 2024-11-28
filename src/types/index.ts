@@ -87,7 +87,7 @@ export type UserInteraction = {
     userId: string;
     user: User;
     likes: Like[];
-    bookmarks: Bookmark[];
+    collections: Collection[];
     comments: Comment[];
 };
 
@@ -113,14 +113,25 @@ export type Like = {
     userInteraction: UserInteraction;
 };
 
+export type Collection = {
+    id: string;
+    name: string;
+    description: string;
+    updatedAt: Date;
+    createdAt: Date;
+    userInteractionId: string;
+    userInteraction: UserInteraction;
+    bookmarks: Bookmark[];
+};
+
 export type Bookmark = {
     id: string;
     updatedAt: Date;
     createdAt: Date;
     newsInteractionId: string;
-    userInteractionId: string;
+    collectionId: string;
     newsInteraction: NewsInteraction;
-    userInteraction: UserInteraction;
+    collection: Collection;
 };
 
 export type Comment = {

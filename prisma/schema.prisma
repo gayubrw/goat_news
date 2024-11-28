@@ -118,7 +118,7 @@ model UserInteraction {
 
   user      User       @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
   likes     Like[]
-  bookmarks Bookmark[]
+  collections Collection[]
   comments  Comment[]
 
   @@map("users_interactions")
@@ -157,12 +157,26 @@ model Bookmark {
   updatedAt         DateTime @updatedAt @map("updated_at")
   createdAt         DateTime @default(now()) @map("created_at")
   newsInteractionId String   @map("news_interaction_id")
-  userInteractionId String   @map("user_interaction_id")
+  collectionId      String   @map("collection_id")
 
   newsInteraction NewsInteraction @relation(fields: [newsInteractionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
-  userInteraction UserInteraction @relation(fields: [userInteractionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
 
   @@map("bookmarks")
+}
+
+model Collection {
+  id                String   @id @default(cuid())
+  name              String   @db.VarChar(100)
+  description       String   @db.VarChar(200)
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  userInteractionId String   @map("user_interaction_id")
+
+  userInteraction UserInteraction @relation(fields: [userInteractionId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  bookmarks Bookmark[]
+
+  @@map("collections")
 }
 
 model Comment {
