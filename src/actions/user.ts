@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { User, UserInteraction } from "@prisma/client";
+import { clerkClient } from "@/lib/clerk";
 
 // Types
 type UserBasic = Pick<User, 'id' | 'clerkId' | 'role' | 'createdAt' | 'updatedAt'>;
@@ -62,4 +63,22 @@ export async function getCurrentUserWithInteractions(): Promise<UserWithInteract
     console.error("[GET_CURRENT_USER_WITH_INTERACTIONS]", error);
     return null;
   }
+}
+
+export async function getClerkUser(clerkId: string | null) {
+    if (!clerkId) return null;
+
+    try {
+      const user = await clerkClient.users.getUser(clerkId);
+
+      return {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        imageUrl: user.imageUrl,
+        email: user.emailAddresses[0]?.emailAddress
+      };
+    } catch (error) {
+      console.error("[GET_CLERK_USER]", error);
+      return null;
+    }
 }

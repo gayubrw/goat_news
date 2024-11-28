@@ -197,7 +197,11 @@ export async function getNews(subCategoryId?: string): Promise<News[]> {
             where,
             include: {
                 user: true,
-                subCategory: true,
+                subCategory: {
+                    include: {
+                        category: true,
+                    }
+                },
                 sections: {
                     include: {
                         sectionImages: true,
@@ -221,7 +225,8 @@ export async function getNews(subCategoryId?: string): Promise<News[]> {
         });
         return news as News[];
     } catch (error) {
-        handleError(error);
+        console.error("[GET_NEWS]", error);
+        throw error;
     }
 }
 

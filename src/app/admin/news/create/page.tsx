@@ -42,24 +42,6 @@ type Section = {
   };
 };
 
-// type SectionTextContent = {
-//   type: "text";
-//   data: {
-//     text: string;
-//   };
-// };
-
-// type SectionImageContent = {
-//   type: "image";
-//   data: {
-//     imageUrl: string;
-//     alt: string;
-//     description: string;
-//   };
-// };
-
-// type SectionContent = SectionTextContent | SectionImageContent;
-
 type EditorViewProps = {
   title: string;
   setTitle: (value: string) => void;
@@ -405,6 +387,7 @@ const CreateNewsPage = () => {
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [subCategoryId, setSubCategoryId] = useState('');
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategory | null>(null);
   const [isLoadingSubCategories, setIsLoadingSubCategories] = useState(true);
   const [sections, setSections] = useState<Section[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -428,231 +411,249 @@ const CreateNewsPage = () => {
     fetchSubCategories();
   }, []);
 
+  const handleSubCategoryChange = (subcategoryId: string) => {
+    setSubCategoryId(subcategoryId);
+    const selected = subCategories.find(sc => sc.id === subcategoryId);
+    setSelectedSubCategory(selected || null);
+  };
+
   const addSection = (type: 'text' | 'image') => {
     const newSection: Section = {
-      id: Math.random().toString(36).substr(2, 9),
-      order: sections.length,
-      isSeparator: false,
-      title: '',
-      content: {
-        type,
-        data: type === 'text'
-          ? { text: '' }
-          : { imageUrl: '', alt: '', description: '' }
-      }
+        id: Math.random().toString(36).substr(2, 9),
+        order: sections.length,
+        isSeparator: false,
+        title: '',
+        content: {
+          type,
+          data: type === 'text'
+            ? { text: '' }
+            : { imageUrl: '', alt: '', description: '' }
+        }
+      };
+      setSections([...sections, newSection]);
     };
-    setSections([...sections, newSection]);
-  };
 
-  const updateSection = (index: number, data: Partial<Section>) => {
-    const newSections = [...sections];
-    newSections[index] = { ...newSections[index], ...data };
-    setSections(newSections);
-  };
+    const updateSection = (index: number, data: Partial<Section>) => {
+      const newSections = [...sections];
+      newSections[index] = { ...newSections[index], ...data };
+      setSections(newSections);
+    };
 
-  const removeSection = (index: number) => {
-    const newSections = sections.filter((_, i) => i !== index);
-    setSections(newSections);
-  };
+    const removeSection = (index: number) => {
+      const newSections = sections.filter((_, i) => i !== index);
+      setSections(newSections);
+    };
 
-  const handleDragStart = (index: number) => {
-    setIsDragging(true);
-    setDraggedIndex(index);
-  };
+    const handleDragStart = (index: number) => {
+      setIsDragging(true);
+      setDraggedIndex(index);
+    };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedIndex === null) return;
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+      e.preventDefault();
+      if (draggedIndex === null) return;
 
-    const newSections = [...sections];
-    const draggedSection = newSections[draggedIndex];
-    newSections.splice(draggedIndex, 1);
-    newSections.splice(index, 0, draggedSection);
-    setSections(newSections);
-    setDraggedIndex(index);
-  };
+      const newSections = [...sections];
+      const draggedSection = newSections[draggedIndex];
+      newSections.splice(draggedIndex, 1);
+      newSections.splice(index, 0, draggedSection);
+      setSections(newSections);
+      setDraggedIndex(index);
+    };
 
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    setDraggedIndex(null);
-  };
+    const handleDragEnd = () => {
+      setIsDragging(false);
+      setDraggedIndex(null);
+    };
 
-  const handleSubmit = async () => {
-    if (isSubmitting) return;
+    const handleSubmit = async () => {
+      if (isSubmitting) return;
 
-    // Form validation
-    if (!title.trim()) {
-      toast.error('Title is required');
-      return;
-    }
-
-    if (!description.trim()) {
-      toast.error('Description is required');
-      return;
-    }
-
-    if (!subCategoryId) {
-      toast.error('Please select a category');
-      return;
-    }
-
-    if (sections.length === 0) {
-      toast.error('Please add at least one section');
-      return;
-    }
-
-    // Validate sections
-    const hasInvalidImage = sections.some(section =>
-      section.content.type === 'image' &&
-      !(section.content.data as ImageContent).imageUrl
-    );
-
-    if (hasInvalidImage) {
-      toast.error('Please provide URLs for all images');
-      return;
-    }
-
-    const hasInvalidText = sections.some(section =>
-      section.content.type === 'text' &&
-      !(section.content.data as TextContent).text.trim()
-    );
-
-    if (hasInvalidText) {
-      toast.error('Please provide content for all text sections');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Get current user
-      const currentUser = await getCurrentUserData();
-      if (!currentUser?.id) {
-        toast.error('You must be logged in to create news');
+      // Form validation
+      if (!title.trim()) {
+        toast.error('Title is required');
         return;
       }
 
-      // Format sections for submission
-      const formattedSections = sections.map((section) => ({
-        order: section.order,
-        isSeparator: section.isSeparator,
-        content: section.content.type === 'text'
-          ? {
-              type: 'text' as const,
-              data: {
-                text: (section.content.data as TextContent).text
+      if (!description.trim()) {
+        toast.error('Description is required');
+        return;
+      }
+
+      if (!subCategoryId) {
+        toast.error('Please select a category');
+        return;
+      }
+
+      if (sections.length === 0) {
+        toast.error('Please add at least one section');
+        return;
+      }
+
+      // Validate sections
+      const hasInvalidImage = sections.some(section =>
+        section.content.type === 'image' &&
+        !(section.content.data as ImageContent).imageUrl
+      );
+
+      if (hasInvalidImage) {
+        toast.error('Please provide URLs for all images');
+        return;
+      }
+
+      const hasInvalidText = sections.some(section =>
+        section.content.type === 'text' &&
+        !(section.content.data as TextContent).text.trim()
+      );
+
+      if (hasInvalidText) {
+        toast.error('Please provide content for all text sections');
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        // Get current user
+        const currentUser = await getCurrentUserData();
+        if (!currentUser?.id) {
+          toast.error('You must be logged in to create news');
+          return;
+        }
+
+        // Format sections for submission
+        const formattedSections = sections.map((section) => ({
+          order: section.order,
+          isSeparator: section.isSeparator,
+          content: section.content.type === 'text'
+            ? {
+                type: 'text' as const,
+                data: {
+                  text: (section.content.data as TextContent).text
+                }
               }
-            }
-          : {
-              type: 'image' as const,
-              data: {
-                imageUrl: (section.content.data as ImageContent).imageUrl,
-                alt: (section.content.data as ImageContent).alt,
-                description: (section.content.data as ImageContent).description
+            : {
+                type: 'image' as const,
+                data: {
+                  imageUrl: (section.content.data as ImageContent).imageUrl,
+                  alt: (section.content.data as ImageContent).alt,
+                  description: (section.content.data as ImageContent).description
+                }
               }
-            }
-      }));
+        }));
 
-      // Prepare news data
-      const newsData = {
-        title: title.trim(),
-        description: description.trim(),
-        thumbnailUrl: thumbnailUrl.trim() || undefined,
-        subCategoryId,
-        userId: currentUser.id,
-        sections: formattedSections
-      };
+        // Prepare news data
+        const newsData = {
+          title: title.trim(),
+          description: description.trim(),
+          thumbnailUrl: thumbnailUrl.trim() || undefined,
+          subCategoryId,
+          userId: currentUser.id,
+          sections: formattedSections
+        };
 
-      // Create the news
-      const result = await createNews(newsData);
+        // Create the news
+        const result = await createNews(newsData);
 
-      toast.success('News created successfully!');
-      router.push(`/news/${result.path}`);
-    } catch (error) {
-      console.error('Failed to create news:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create news');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+        toast.success('News created successfully!');
 
-  return (
-    <div className="min-h-screen pt-16">
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="sticky top-0 z-10 pb-6">
-          <div className="flex justify-between items-center mb-6">
-            <div className="space-y-1">
-              <h1 className="text-3xl font-bold text-foreground">Create News</h1>
-              <p className="text-muted-foreground">Create a new article with rich content sections</p>
+        // Construct the full path for navigation
+        if (selectedSubCategory && result.path) {
+          const categoryPath = selectedSubCategory.category.path;
+          const subCategoryPath = selectedSubCategory.path;
+          const newsPath = result.path;
+
+          router.push(`/${categoryPath}/${subCategoryPath}/${newsPath}`);
+        } else {
+          // Fallback if we can't construct the full path
+          toast.error('Unable to navigate to the created news');
+          router.push('/');
+        }
+      } catch (error) {
+        console.error('Failed to create news:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to create news');
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen pt-16">
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="sticky top-0 z-10 pb-6">
+            <div className="flex justify-between items-center mb-6">
+              <div className="space-y-1">
+                <h1 className="text-3xl font-bold text-foreground">Create News</h1>
+                <p className="text-muted-foreground">Create a new article with rich content sections</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSubmit} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    'Publish'
+                  )}
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Publishing...
-                  </>
-                ) : (
-                  'Publish'
-                )}
-              </Button>
-            </div>
+
+            <Tabs defaultValue="editor" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="editor">
+                  <EyeOff className="w-4 h-4 mr-2" />
+                  Editor
+                </TabsTrigger>
+                <TabsTrigger value="preview">
+                  <Eye className="w-4 h-4 mr-2" />
+                  Preview
+                </TabsTrigger>
+              </TabsList>
+
+              <div className="mt-6">
+                <TabsContent value="editor">
+                  <EditorView
+                    title={title}
+                    setTitle={setTitle}
+                    description={description}
+                    setDescription={setDescription}
+                    thumbnailUrl={thumbnailUrl}
+                    setThumbnailUrl={setThumbnailUrl}
+                    subCategoryId={subCategoryId}
+                    setSubCategoryId={handleSubCategoryChange}
+                    subCategories={subCategories}
+                    isLoadingSubCategories={isLoadingSubCategories}
+                    sections={sections}
+                    setSections={setSections}
+                    isDragging={isDragging}
+                    draggedIndex={draggedIndex}
+                    handleDragStart={handleDragStart}
+                    handleDragOver={handleDragOver}
+                    handleDragEnd={handleDragEnd}
+                    addSection={addSection}
+                    updateSection={updateSection}
+                    removeSection={removeSection}
+                  />
+                </TabsContent>
+                <TabsContent value="preview">
+                  <PreviewView
+                    title={title}
+                    description={description}
+                    thumbnailUrl={thumbnailUrl}
+                    sections={sections}
+                  />
+                </TabsContent>
+              </div>
+            </Tabs>
           </div>
-
-          <Tabs defaultValue="editor" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="editor">
-                <EyeOff className="w-4 h-4 mr-2" />
-                Editor
-              </TabsTrigger>
-              <TabsTrigger value="preview">
-                <Eye className="w-4 h-4 mr-2" />
-                Preview
-              </TabsTrigger>
-            </TabsList>
-
-            <div className="mt-6">
-              <TabsContent value="editor">
-                <EditorView
-                  title={title}
-                  setTitle={setTitle}
-                  description={description}
-                  setDescription={setDescription}
-                  thumbnailUrl={thumbnailUrl}
-                  setThumbnailUrl={setThumbnailUrl}
-                  subCategoryId={subCategoryId}
-                  setSubCategoryId={setSubCategoryId}
-                  subCategories={subCategories}
-                  isLoadingSubCategories={isLoadingSubCategories}
-                  sections={sections}
-                  setSections={setSections}
-                  isDragging={isDragging}
-                  draggedIndex={draggedIndex}
-                  handleDragStart={handleDragStart}
-                  handleDragOver={handleDragOver}
-                  handleDragEnd={handleDragEnd}
-                  addSection={addSection}
-                  updateSection={updateSection}
-                  removeSection={removeSection}
-                />
-              </TabsContent>
-              <TabsContent value="preview">
-                <PreviewView
-                  title={title}
-                  description={description}
-                  thumbnailUrl={thumbnailUrl}
-                  sections={sections}
-                />
-              </TabsContent>
-            </div>
-          </Tabs>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-export default CreateNewsPage;
+  export default CreateNewsPage;
