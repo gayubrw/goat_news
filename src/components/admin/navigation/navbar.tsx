@@ -45,7 +45,7 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, isMobile, setSidebarOpen }) => {
-    const { user, isSignedIn } = useUser();
+    const { user } = useUser();
     const { signOut } = useAuth();
     const router = useRouter();
     const [commandOpen, setCommandOpen] = React.useState(false);
