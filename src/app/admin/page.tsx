@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
+import { getDashboardData } from '@/actions/dashboard';
 
 type DashboardData = {
     title: string;
@@ -9,36 +10,8 @@ type DashboardData = {
     trend: number;
 };
 
-type Activity = {
-    id: string;
-    user: string;
-    activity: string;
-    date: string;
-    status: 'Diterbitkan' | 'Draft' | 'Selesai';
-};
-
-async function getDashboardData() {
-    try {
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_APP_URL}/api/dashboard`,
-            {
-                next: { revalidate: 60 }, // Revalidate every minute
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error('Failed to fetch dashboard data');
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Error:', error);
-        return null;
-    }
-}
-
 export default async function Page() {
-    const data = await getDashboardData();
+    const data = await getDashboardData().catch(() => null);
 
     if (!data) {
         return (
@@ -71,19 +44,6 @@ export default async function Page() {
             trend: data.metrics.newComments.trend,
         },
     ];
-
-    const getStatusColor = (status: Activity['status']) => {
-        switch (status.toLowerCase()) {
-            case 'diterbitkan':
-                return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
-            case 'draft':
-                return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200';
-            case 'selesai':
-                return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200';
-            default:
-                return 'bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200';
-        }
-    };
 
     return (
         <div className="pt-16 space-y-4 md:space-y-6">
@@ -130,28 +90,18 @@ export default async function Page() {
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                        <div className="hidden md:grid md:grid-cols-4 py-3 px-6 text-sm font-medium text-muted-foreground">
+                        <div className="hidden md:grid md:grid-cols-3 py-3 px-6 text-sm font-medium text-muted-foreground">
                             <div>User</div>
                             <div>Activity</div>
                             <div>Date</div>
-                            <div>Status</div>
                         </div>
-                        {data.activities.map((activity: Activity) => (
+                        {data.activities.map((activity) => (
                             <div
                                 key={activity.id}
-                                className="p-4 md:p-6 text-sm space-y-2 md:space-y-0 md:grid md:grid-cols-4 md:items-center"
+                                className="p-4 md:p-6 text-sm space-y-2 md:space-y-0 md:grid md:grid-cols-3 md:items-center"
                             >
-                                <div className="font-medium flex justify-between md:block">
-                                    <span>{activity.user}</span>
-                                    <span className="md:hidden">
-                                        <span
-                                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                                                activity.status
-                                            )}`}
-                                        >
-                                            {activity.status}
-                                        </span>
-                                    </span>
+                                <div className="font-medium">
+                                    {activity.user}
                                 </div>
                                 <div className="text-muted-foreground">
                                     {activity.activity}
@@ -160,15 +110,6 @@ export default async function Page() {
                                     {new Date(activity.date).toLocaleDateString(
                                         'id-ID'
                                     )}
-                                </div>
-                                <div className="hidden md:block">
-                                    <span
-                                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                                            activity.status
-                                        )}`}
-                                    >
-                                        {activity.status}
-                                    </span>
                                 </div>
                             </div>
                         ))}

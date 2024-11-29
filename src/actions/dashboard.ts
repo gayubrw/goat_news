@@ -1,13 +1,38 @@
+'use server'
+
 import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
 import { clerkClient } from '@/lib/clerk';
 
-export async function GET() {
-    try {
-        // Get total news count
-        const totalNews = await prisma.news.count();
+type DashboardData = {
+    metrics: {
+        totalNews: {
+            value: string;
+            trend: number;
+        };
+        activeNews: {
+            value: string;
+            trend: number;
+        };
+        totalReaders: {
+            value: string;
+            trend: number;
+        };
+        newComments: {
+            value: string;
+            trend: number;
+        };
+    };
+    activities: {
+        id: string;
+        user: string;
+        activity: string;
+        date: string;
+    }[];
+};
 
-        // Get active news (has interactions in last 7 days)
+export async function getDashboardData(): Promise<DashboardData> {
+    try {
+        const totalNews = await prisma.news.count();
         const activeNews = await prisma.newsInteraction.count({
             where: {
                 updatedAt: {
@@ -16,7 +41,6 @@ export async function GET() {
             },
         });
 
-        // Get total readers (sum of popularity scores)
         const readersData = await prisma.newsInteraction.aggregate({
             _sum: {
                 popularityScore: true,
@@ -24,7 +48,6 @@ export async function GET() {
         });
         const totalReaders = readersData._sum.popularityScore || 0;
 
-        // Get new comments count (last 24 hours)
         const newComments = await prisma.comment.count({
             where: {
                 createdAt: {
@@ -33,9 +56,7 @@ export async function GET() {
             },
         });
 
-        // Get recent activities
         const recentActivities = await prisma.$transaction(async (tx) => {
-            // Get recent news creations
             const newsActivities = await tx.news.findMany({
                 select: {
                     id: true,
@@ -54,7 +75,6 @@ export async function GET() {
                 take: 5,
             });
 
-            // Get recent comments
             const commentActivities = await tx.comment.findMany({
                 select: {
                     id: true,
@@ -76,7 +96,6 @@ export async function GET() {
                 take: 5,
             });
 
-            // Get user details from Clerk
             const clerkIds = new Set(
                 [
                     ...newsActivities.map((news) => news.user.clerkId),
@@ -102,7 +121,6 @@ export async function GET() {
                 }
             }
 
-            // Combine and format activities
             return [
                 ...newsActivities.map((news) => ({
                     id: news.id,
@@ -111,7 +129,6 @@ export async function GET() {
                         : 'Anonymous',
                     activity: 'Memposting artikel baru',
                     date: news.createdAt.toISOString(),
-                    status: 'Diterbitkan',
                 })),
                 ...commentActivities.map((comment) => ({
                     id: comment.id,
@@ -122,7 +139,6 @@ export async function GET() {
                         : 'Anonymous',
                     activity: 'Menambahkan komentar',
                     date: comment.createdAt.toISOString(),
-                    status: 'Selesai',
                 })),
             ]
                 .sort(
@@ -132,7 +148,6 @@ export async function GET() {
                 .slice(0, 5);
         });
 
-        // Calculate trends (comparing with previous period)
         const previousPeriodComments = await prisma.comment.count({
             where: {
                 createdAt: {
@@ -149,7 +164,7 @@ export async function GET() {
                       previousPeriodComments) *
                   100;
 
-        return NextResponse.json({
+        return {
             metrics: {
                 totalNews: {
                     value: totalNews.toString(),
@@ -169,12 +184,9 @@ export async function GET() {
                 },
             },
             activities: recentActivities,
-        });
+        };
     } catch (error) {
         console.error('Dashboard error:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
+        throw new Error('Failed to fetch dashboard data');
     }
 }

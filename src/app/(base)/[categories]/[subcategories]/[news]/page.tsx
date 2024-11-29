@@ -19,6 +19,8 @@ import {
     ShareNativeButton,
     TwitterShareButton,
 } from '@/components/share-button';
+import { isNewsLiked } from '@/actions/like';
+import LikeButton from '@/components/like-button';
 
 type Params = {
     categories: string;
@@ -119,6 +121,8 @@ export default async function NewsPage({
     const relatedNews = (await getNews(newsData.subCategoryId))
         .filter((news) => news.id !== newsData.id)
         .slice(0, 3);
+
+    const isLiked = await isNewsLiked(newsData.id);
 
     return (
         <div className="min-h-screen pt-24 pb-8">
@@ -285,13 +289,18 @@ export default async function NewsPage({
 
                     {/* Share Section */}
                     <div className="mt-8 pt-8 border-t border-zinc-200 dark:border-zinc-800">
-                        <div className="flex justify-end items-center gap-2">
-                            <ShareNativeButton
-                                title={newsData.title}
-                                description={newsData.description}
-                            />
-                            <TwitterShareButton title={newsData.title} />
-                            <CopyLinkButton />
+                        <div className="flex justify-between items-center gap-2">
+                            <div>
+                            <LikeButton newsId={newsData.id} initialIsLiked={isLiked} />
+                            </div>
+                            <div>
+                                <ShareNativeButton
+                                    title={newsData.title}
+                                    description={newsData.description}
+                                />
+                                <TwitterShareButton title={newsData.title} />
+                                <CopyLinkButton />
+                            </div>
                         </div>
                     </div>
                 </div>
