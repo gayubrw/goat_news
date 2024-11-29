@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { getCurrentUserProfile, updateProfile } from '@/actions/profile';
-import { ImageUploadField } from '@/components/image-upload';
+import { ProfileImageUploadField } from '@/components/profile-image-upload';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save } from 'lucide-react';
-// import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function ProfilePage() {
     const { isLoaded, user } = useUser();
@@ -161,7 +160,7 @@ export default function ProfilePage() {
                                 </CardHeader>
                                 <CardContent className="space-y-8">
                                     <div className="flex flex-col items-center space-y-4">
-                                        <ImageUploadField
+                                        <ProfileImageUploadField
                                             value={profileData.imageUrl}
                                             onUploadComplete={
                                                 handleImageUploadComplete

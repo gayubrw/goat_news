@@ -177,7 +177,8 @@ export default async function NewsPage({
                                         alt={`${authorData.firstName} ${authorData.lastName}`}
                                         width={40}
                                         height={40}
-                                        className="rounded-full"
+                                        className="rounded-full h-[40px] w-[40px] object-cover"
+
                                     />
                                 ) : (
                                     <div className="h-10 w-10 rounded-full bg-zinc-200 dark:bg-zinc-700" />

@@ -16,6 +16,7 @@ import {
     Bookmark,
     BarChart,
     X,
+    Trash,
 } from 'lucide-react';
 import {
     Tooltip,
@@ -101,6 +102,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                     icon: Settings,
                     label: 'Settings',
                     href: '/admin/settings',
+                },
+                {
+                    icon: Trash,
+                    label: 'Cleanup',
+                    href: '/admin/cleanup',
                 },
             ],
         },

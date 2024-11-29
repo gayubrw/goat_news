@@ -14,7 +14,7 @@ interface ImageUploadFieldProps {
     label?: string;
 }
 
-export function ImageUploadField({
+export function ProfileImageUploadField({
     onUploadComplete,
     value,
     label = 'Image',

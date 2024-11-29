@@ -72,40 +72,54 @@ export async function getCurrentUserWithInteractions(): Promise<UserWithInteract
 export async function getClerkUser(clerkId: string | null) {
     if (!clerkId) return null;
 
-    try {
-        const user = await clerkClient.users.getUser(clerkId);
+    // Tambahkan retry logic
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000; // 1 second
 
-        // Add null check
-        if (!user) return null;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const user = await Promise.race([
+                clerkClient.users.getUser(clerkId),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Request timeout')), 5000)
+                )
+            ]) as Awaited<ReturnType<typeof clerkClient.users.getUser>>;
 
-        return {
-            firstName: user.firstName || null,
-            lastName: user.lastName || null,
-            imageUrl: user.imageUrl || null,
-            email: user.emailAddresses[0]?.emailAddress || null,
-        };
-    } catch (error) {
-        // Enhanced error logging to handle different types of errors
-        if (error instanceof Error) {
-            // Log Error message and stack if it's a standard Error object
-            console.error('[GET_CLERK_USER] Error details:', {
-                clerkId,
-                message: error.message,
-                stack: error.stack,
-            });
-        } else {
-            // Handle non-Error objects by converting them to a string
-            console.error('[GET_CLERK_USER] Error details:', {
-                clerkId,
-                error: String(error),
-            });
+            if (!user) return null;
+
+            return {
+                firstName: user.firstName || null,
+                lastName: user.lastName || null,
+                imageUrl: user.imageUrl || null,
+                email: user.emailAddresses[0]?.emailAddress || null,
+            };
+        } catch (error) {
+            const isLastAttempt = attempt === MAX_RETRIES;
+
+            if (error instanceof Error) {
+                console.error(`[GET_CLERK_USER] Attempt ${attempt}/${MAX_RETRIES} failed:`, {
+                    clerkId,
+                    message: error.message,
+                    stack: error.stack,
+                });
+            } else {
+                console.error(`[GET_CLERK_USER] Attempt ${attempt}/${MAX_RETRIES} failed:`, {
+                    clerkId,
+                    error: String(error),
+                });
+            }
+
+            if (isLastAttempt) {
+                return null;
+            }
+
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         }
-
-        // Return null instead of throwing
-        return null;
     }
-}
 
+    return null;
+}
 
 // Get all users with filters
 export async function getUsers(role: string = 'all', search: string = '') {

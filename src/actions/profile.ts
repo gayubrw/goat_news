@@ -3,18 +3,60 @@
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { clerkClient } from '@/lib/clerk';
+import type { ClerkAPIError } from '@clerk/types';
+
+// Define a type that matches Clerk's error structure
+type ClerkError = {
+    clerkError: boolean;
+    status?: number;
+    clerkTraceId?: string;
+    errors?: ClerkAPIError[];
+};
 
 export async function getCurrentUserProfile() {
     try {
         const { userId } = await auth();
-        if (!userId) return null;
 
-        const [user, clerkUser] = await Promise.all([
-            prisma.user.findFirst({
+        if (!userId) {
+            console.log('[GET_PROFILE] No userId found');
+            return null;
+        }
+
+        if (!process.env.CLERK_SECRET_KEY) {
+            console.error('[GET_PROFILE] CLERK_SECRET_KEY is not configured');
+            return null;
+        }
+
+        let clerkUser;
+        try {
+            clerkUser = await clerkClient.users.getUser(userId);
+        } catch (error: unknown) {
+            const clerkError = error as ClerkError;
+            console.error('[GET_PROFILE] Clerk API error:', {
+                error: clerkError,
+                userId,
+                clerkTraceId: clerkError.clerkTraceId
+            });
+            return null;
+        }
+
+        let user;
+        try {
+            user = await prisma.user.findFirst({
                 where: { clerkId: userId },
-            }),
-            clerkClient.users.getUser(userId),
-        ]);
+            });
+        } catch (error: unknown) {
+            console.error('[GET_PROFILE] Database error:', error);
+            return null;
+        }
+
+        if (!user || !clerkUser) {
+            console.log('[GET_PROFILE] User not found', {
+                hasUser: !!user,
+                hasClerkUser: !!clerkUser
+            });
+            return null;
+        }
 
         return {
             ...user,
@@ -25,9 +67,10 @@ export async function getCurrentUserProfile() {
                 email: clerkUser.emailAddresses[0]?.emailAddress,
             },
         };
-    } catch (error) {
-        console.error('[GET_PROFILE]', error);
-        throw error;
+
+    } catch (error: unknown) {
+        console.error('[GET_PROFILE] Unexpected error:', error);
+        return null;
     }
 }
 
