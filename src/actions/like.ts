@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { getCurrentUserData } from '@/actions/user'
 import { revalidatePath } from 'next/cache'
+import { INTERACTION_ACTIONS, createLog } from '@/lib/log'
 
 export async function addLike(newsId: string) {
   try {
@@ -15,7 +16,14 @@ export async function addLike(newsId: string) {
     await prisma.$transaction(async (tx) => {
       // Get the news interaction for this news
       const newsInteraction = await tx.newsInteraction.findFirst({
-        where: { newsId }
+        where: { newsId },
+        include: {
+          news: {
+            select: {
+              title: true
+            }
+          }
+        }
       })
 
       if (!newsInteraction) {
@@ -32,7 +40,7 @@ export async function addLike(newsId: string) {
       }
 
       // Create the like
-      await tx.like.create({
+      const like = await tx.like.create({
         data: {
           newsInteractionId: newsInteraction.id,
           userInteractionId: userInteraction.id
@@ -58,6 +66,18 @@ export async function addLike(newsId: string) {
           }
         }
       })
+
+      // Create log entry
+      await createLog(tx, {
+        userId: user.id,
+        action: INTERACTION_ACTIONS.NEWS_LIKED,
+        description: `Liked news article: ${newsInteraction.news.title}`,
+        metadata: {
+          newsId,
+          likeId: like.id,
+          newsTitle: newsInteraction.news.title
+        }
+      })
     })
 
     revalidatePath('/news')
@@ -79,7 +99,14 @@ export async function removeLike(newsId: string) {
     await prisma.$transaction(async (tx) => {
       // Get the news interaction
       const newsInteraction = await tx.newsInteraction.findFirst({
-        where: { newsId }
+        where: { newsId },
+        include: {
+          news: {
+            select: {
+              title: true
+            }
+          }
+        }
       })
 
       if (!newsInteraction) {
@@ -128,6 +155,18 @@ export async function removeLike(newsId: string) {
           contributionScore: {
             decrement: 1
           }
+        }
+      })
+
+      // Create log entry
+      await createLog(tx, {
+        userId: user.id,
+        action: INTERACTION_ACTIONS.NEWS_UNLIKED,
+        description: `Unliked news article: ${newsInteraction.news.title}`,
+        metadata: {
+          newsId,
+          likeId: like.id,
+          newsTitle: newsInteraction.news.title
         }
       })
     })
