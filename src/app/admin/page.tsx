@@ -1,3 +1,4 @@
+// app/admin/page.tsx
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
@@ -16,35 +17,58 @@ type Activity = {
     status: 'Diterbitkan' | 'Draft' | 'Selesai';
 };
 
-const Page = () => {
-    const dashboardData: DashboardData[] = [
-        { title: 'Total Artikel', value: '1,234', trend: 12 },
-        { title: 'Artikel Aktif', value: '892', trend: 5.8 },
-        { title: 'Total Pembaca', value: '45.2K', trend: 15.3 },
-        { title: 'Komentar Baru', value: '156', trend: 8.1 },
-    ];
+async function getDashboardData() {
+    try {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_APP_URL}/api/dashboard`,
+            {
+                next: { revalidate: 60 }, // Revalidate every minute
+            }
+        );
 
-    const activities: Activity[] = [
+        if (!response.ok) {
+            throw new Error('Failed to fetch dashboard data');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error:', error);
+        return null;
+    }
+}
+
+export default async function Page() {
+    const data = await getDashboardData();
+
+    if (!data) {
+        return (
+            <div className="pt-16 space-y-4">
+                <h1 className="text-xl md:text-2xl font-bold">Dashboard</h1>
+                <p>Failed to load dashboard data. Please try again later.</p>
+            </div>
+        );
+    }
+
+    const dashboardData: DashboardData[] = [
         {
-            id: '1',
-            user: 'John Doe',
-            activity: 'Memposting artikel baru',
-            date: '2024-11-24',
-            status: 'Diterbitkan',
+            title: 'Total Artikel',
+            value: data.metrics.totalNews.value,
+            trend: data.metrics.totalNews.trend,
         },
         {
-            id: '2',
-            user: 'Jane Smith',
-            activity: 'Mengedit artikel',
-            date: '2024-11-24',
-            status: 'Draft',
+            title: 'Artikel Aktif',
+            value: data.metrics.activeNews.value,
+            trend: data.metrics.activeNews.trend,
         },
         {
-            id: '3',
-            user: 'Bob Johnson',
-            activity: 'Moderasi komentar',
-            date: '2024-11-23',
-            status: 'Selesai',
+            title: 'Total Pembaca',
+            value: parseInt(data.metrics.totalReaders.value).toLocaleString(),
+            trend: data.metrics.totalReaders.trend,
+        },
+        {
+            title: 'Komentar Baru',
+            value: data.metrics.newComments.value,
+            trend: data.metrics.newComments.trend,
         },
     ];
 
@@ -90,7 +114,7 @@ const Page = () => {
                                     ) : (
                                         <ArrowDownIcon className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                                     )}
-                                    {Math.abs(data.trend)}%
+                                    {Math.abs(data.trend).toFixed(1)}%
                                 </span>
                             </div>
                         </CardContent>
@@ -100,19 +124,19 @@ const Page = () => {
 
             <Card>
                 <CardHeader className="p-4 md:p-6">
-                    <CardTitle className="text-lg md:text-xl">Recent Activities</CardTitle>
+                    <CardTitle className="text-lg md:text-xl">
+                        Recent Activities
+                    </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                        {/* Header - Hidden on mobile */}
                         <div className="hidden md:grid md:grid-cols-4 py-3 px-6 text-sm font-medium text-muted-foreground">
                             <div>User</div>
                             <div>Activity</div>
                             <div>Date</div>
                             <div>Status</div>
                         </div>
-                        {/* Mobile-friendly activity items */}
-                        {activities.map((activity) => (
+                        {data.activities.map((activity: Activity) => (
                             <div
                                 key={activity.id}
                                 className="p-4 md:p-6 text-sm space-y-2 md:space-y-0 md:grid md:grid-cols-4 md:items-center"
@@ -133,7 +157,9 @@ const Page = () => {
                                     {activity.activity}
                                 </div>
                                 <div className="text-muted-foreground text-xs md:text-sm">
-                                    {activity.date}
+                                    {new Date(activity.date).toLocaleDateString(
+                                        'id-ID'
+                                    )}
                                 </div>
                                 <div className="hidden md:block">
                                     <span
@@ -151,6 +177,4 @@ const Page = () => {
             </Card>
         </div>
     );
-};
-
-export default Page;
+}
