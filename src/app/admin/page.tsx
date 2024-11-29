@@ -1,13 +1,31 @@
-// app/admin/page.tsx
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
+import { ArrowUpIcon, ArrowDownIcon, User2 } from 'lucide-react';
 import { getDashboardData } from '@/actions/dashboard';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Info } from 'lucide-react';
+import { Prisma } from '@prisma/client';
 
 type DashboardData = {
     title: string;
     value: string;
     trend: number;
+};
+
+const hasMetadata = (metadata: Prisma.JsonValue): boolean => {
+    return typeof metadata === 'object' &&
+           metadata !== null &&
+           !Array.isArray(metadata) &&
+           Object.keys(metadata as object).length > 0;
 };
 
 export default async function Page() {
@@ -90,26 +108,72 @@ export default async function Page() {
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                        <div className="hidden md:grid md:grid-cols-3 py-3 px-6 text-sm font-medium text-muted-foreground">
+                        <div className="hidden md:grid md:grid-cols-4 py-3 px-6 text-sm font-medium text-muted-foreground">
                             <div>User</div>
                             <div>Activity</div>
                             <div>Date</div>
+                            <div>Details</div>
                         </div>
                         {data.activities.map((activity) => (
                             <div
                                 key={activity.id}
-                                className="p-4 md:p-6 text-sm space-y-2 md:space-y-0 md:grid md:grid-cols-3 md:items-center"
+                                className="p-4 md:p-6 text-sm space-y-2 md:space-y-0 md:grid md:grid-cols-4 md:items-center"
                             >
-                                <div className="font-medium">
-                                    {activity.user}
+                                <div className="flex items-center space-x-3">
+                                    <Avatar className="h-8 w-8">
+                                        {activity.user.imageUrl ? (
+                                            <AvatarImage
+                                                src={activity.user.imageUrl}
+                                                alt={`${activity.user.firstName} ${activity.user.lastName}`}
+                                            />
+                                        ) : (
+                                            <AvatarFallback>
+                                                <User2 className="h-4 w-4" />
+                                            </AvatarFallback>
+                                        )}
+                                    </Avatar>
+                                    <span className="font-medium">
+                                        {activity.user.firstName && activity.user.lastName
+                                            ? `${activity.user.firstName} ${activity.user.lastName}`
+                                            : 'Anonymous User'}
+                                    </span>
                                 </div>
                                 <div className="text-muted-foreground">
                                     {activity.activity}
                                 </div>
                                 <div className="text-muted-foreground text-xs md:text-sm">
-                                    {new Date(activity.date).toLocaleDateString(
-                                        'id-ID'
-                                    )}
+                                    {new Date(activity.date).toLocaleDateString('id-ID')}
+                                </div>
+                                <div>
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <Info className="h-4 w-4" />
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>{activity.activity}</DialogTitle>
+                                                <DialogDescription>
+                                                    {new Date(activity.date).toLocaleString('id-ID')}
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <h4 className="text-sm font-medium mb-2">Description</h4>
+                                                    <p className="text-sm text-muted-foreground">{activity.description}</p>
+                                                </div>
+                                                {hasMetadata(activity.metadata) && (
+                                                    <div>
+                                                        <h4 className="text-sm font-medium mb-2">Metadata</h4>
+                                                        <pre className="text-sm bg-muted p-4 rounded-lg overflow-auto">
+                                                            {JSON.stringify(activity.metadata, null, 2)}
+                                                        </pre>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
                                 </div>
                             </div>
                         ))}

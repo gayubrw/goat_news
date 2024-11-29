@@ -75,17 +75,37 @@ export async function getClerkUser(clerkId: string | null) {
     try {
         const user = await clerkClient.users.getUser(clerkId);
 
+        // Add null check
+        if (!user) return null;
+
         return {
-            firstName: user.firstName,
-            lastName: user.lastName,
-            imageUrl: user.imageUrl,
-            email: user.emailAddresses[0]?.emailAddress,
+            firstName: user.firstName || null,
+            lastName: user.lastName || null,
+            imageUrl: user.imageUrl || null,
+            email: user.emailAddresses[0]?.emailAddress || null,
         };
     } catch (error) {
-        console.error('[GET_CLERK_USER]', error);
+        // Enhanced error logging to handle different types of errors
+        if (error instanceof Error) {
+            // Log Error message and stack if it's a standard Error object
+            console.error('[GET_CLERK_USER] Error details:', {
+                clerkId,
+                message: error.message,
+                stack: error.stack,
+            });
+        } else {
+            // Handle non-Error objects by converting them to a string
+            console.error('[GET_CLERK_USER] Error details:', {
+                clerkId,
+                error: String(error),
+            });
+        }
+
+        // Return null instead of throwing
         return null;
     }
 }
+
 
 // Get all users with filters
 export async function getUsers(role: string = 'all', search: string = '') {

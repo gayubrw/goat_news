@@ -1,0 +1,9 @@
+{
+    "crons": [{
+        "path": "/api/cron/cleanup-logs",
+        "schedule": "0 0 * * *",
+        "headers": {
+            "Authorization": "Bearer @CRON_SECRET_KEY"
+        }
+    }]
+}

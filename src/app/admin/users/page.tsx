@@ -45,7 +45,7 @@ interface EnrichedUser {
     profile: {
         firstName: string | null;
         lastName: string | null;
-        imageUrl: string;
+        imageUrl: string | null;
         email: string | null;
     } | null;
     contributionScore: number;
@@ -181,7 +181,12 @@ const UsersPage = () => {
                 ...user,
                 createdAt: user.createdAt.toISOString(),
                 updatedAt: user.updatedAt.toISOString(),
-            }));
+                profile: user.profile ? {
+                  ...user.profile,
+                  imageUrl: user.profile.imageUrl || '',  // Fallback to empty string if imageUrl is null
+                } : null,
+              }));
+
             setUsers(formattedData);
         } catch (error) {
             console.error(error);
@@ -374,7 +379,7 @@ const UsersPage = () => {
                                 <TableCell className="flex items-center gap-4">
                                     <Avatar className="h-12 w-12">
                                         <AvatarImage
-                                            src={user.profile?.imageUrl}
+                                            src={user.profile?.imageUrl || ''}
                                             alt={user.profile?.firstName || ''}
                                             className="object-cover"
                                         />

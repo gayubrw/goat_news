@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 export type User = {
     id: string;
     clerkId: string | null;
@@ -6,6 +8,18 @@ export type User = {
     updatedAt: Date;
     news: News[];
     userInteractions: UserInteraction[];
+    logs: Log[];
+};
+
+export type Log = {
+    id: string;
+    userId: string;
+    action: string;
+    description: string;
+    metadata: Prisma.JsonValue;
+    createdAt: Date;
+    updatedAt: Date;
+    user: User;
 };
 
 export type News = {

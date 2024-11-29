@@ -2,6 +2,7 @@ import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { createLog, USER_ACTIONS } from '@/lib/log';
 
 export async function POST(req: Request) {
   // Get the headers
@@ -14,7 +15,6 @@ export async function POST(req: Request) {
   if (!SIGNING_SECRET) {
     throw new Error('Error: Please add SIGNING_SECRET from Clerk Dashboard to .env or .env.local')
   }
-
 
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
@@ -50,35 +50,65 @@ export async function POST(req: Request) {
   const eventType = evt.type;
 
   if (eventType === 'user.created') {
-    // Create a new user in the database
-    await prisma.user.create({
-      data: {
-        clerkId: evt.data.id,
-        // Set role based on email domain or other criteria if needed
-        role: 'user',
-      },
-    });
+    // Use prisma transaction to ensure both user creation and logging succeed or fail together
+    await prisma.$transaction(async (tx) => {
+      // Create a new user in the database
+      const user = await tx.user.create({
+        data: {
+          clerkId: evt.data.id,
+          role: 'user',
+        },
+      });
 
-    // Also create UserInteraction record for the new user
-    const user = await prisma.user.findUnique({
-      where: { clerkId: evt.data.id }
-    });
-
-    if (user) {
-      await prisma.userInteraction.create({
+      // Create UserInteraction record
+      await tx.userInteraction.create({
         data: {
           userId: user.id,
           contributionScore: 0,
         },
       });
-    }
+
+      // Log the user creation
+      await createLog(tx, {
+        userId: user.id,
+        action: USER_ACTIONS.USER_CREATED,
+        description: `New user created with clerk ID: ${evt.data.id}`,
+        metadata: {
+          clerkId: evt.data.id,
+          eventType,
+          email: evt.data.email_addresses?.[0]?.email_address,
+          firstName: evt.data.first_name,
+          lastName: evt.data.last_name
+        }
+      });
+    });
   }
 
   if (eventType === 'user.deleted') {
-    // Delete user from database when deleted in Clerk
-    await prisma.user.delete({
+    // Find the user first to get their ID for logging
+    const user = await prisma.user.findUnique({
       where: { clerkId: evt.data.id }
     });
+
+    if (user) {
+      await prisma.$transaction(async (tx) => {
+        // Log the deletion with only the available information
+        await createLog(tx, {
+          userId: user.id,
+          action: USER_ACTIONS.USER_DELETED,
+          description: `User deleted with clerk ID: ${evt.data.id}`,
+          metadata: {
+            clerkId: evt.data.id,
+            eventType
+          }
+        });
+
+        // Delete the user
+        await tx.user.delete({
+          where: { clerkId: evt.data.id }
+        });
+      });
+    }
   }
 
   return new Response('', { status: 200 });
