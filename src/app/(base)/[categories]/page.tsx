@@ -10,13 +10,21 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { prisma } from '@/lib/prisma';
 import { getNews } from '@/actions/news';
 import { formatDistanceToNow } from 'date-fns';
-import type { Category, News } from '@/types';
+import type { Category, News, SubCategory } from '@/types';
 
 type StoryCardProps = {
  news: News;
  categoryPath: string;
  featured?: boolean;
 };
+
+type CategoryWithSubCategories = Omit<Category, 'subCategories'> & {
+    subCategories: Array<Omit<SubCategory, 'category'> & {
+      category: Omit<Category, 'subCategories'>;
+      news: News[];
+    }>;
+  };
+
 
 const StoryCard = ({ news, categoryPath, featured = false }: StoryCardProps) => {
  if (featured) {
@@ -98,27 +106,27 @@ const StoryCard = ({ news, categoryPath, featured = false }: StoryCardProps) => 
  );
 };
 
-async function validateCategory(categoryPath: string): Promise<Category> {
- const category = await prisma.category.findUnique({
-   where: { path: categoryPath },
-   include: {
-     subCategories: {
-       include: {
-         category: true,
-         news: true
-       }
-     }
-   }
- });
+async function validateCategory(categoryPath: string): Promise<CategoryWithSubCategories> {
+    const category = await prisma.category.findUnique({
+      where: { path: categoryPath },
+      include: {
+        subCategories: {
+          include: {
+            category: true,
+            news: true
+          }
+        }
+      }
+    }) as CategoryWithSubCategories;
 
- if (!category) notFound();
- return category;
-}
+    if (!category) notFound();
+    return category;
+  }
 
 async function getData(categoryPath: string) {
  const category = await validateCategory(categoryPath);
  const allNews = await getNews();
- 
+
  // Filter news by category
  const categoryNews = allNews.filter(
    news => news.subCategory.category.path === categoryPath

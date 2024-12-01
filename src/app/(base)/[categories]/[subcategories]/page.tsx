@@ -9,12 +9,12 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { getSubCategories } from '@/actions/subcategory';
 import { getNews } from '@/actions/news';
 import { formatDistanceToNow } from 'date-fns';
-import type { SubCategory, News } from '@/types';
+import type { News } from '@/types';
 
 type StoryCardProps = {
  news: News;
  category: string;
- subcategory: string; 
+ subcategory: string;
  featured?: boolean;
 };
 
