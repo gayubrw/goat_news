@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import type { News } from '@/types';
 import { Prisma } from '@prisma/client';
+import { createLog, NEWS_ACTIONS } from '@/lib/log';
 
 // Validation schemas for each content type
 const SectionImageSchema = z.object({
@@ -120,45 +121,45 @@ function handleError(error: unknown): never {
     }
 }
 
-async function createSections(
-    newsId: string,
-    sections: z.infer<typeof SectionSchema>[]
-) {
-    const createdSections = await Promise.all(
-        sections.map(async (section) => {
-            const createdSection = await prisma.section.create({
-                data: {
-                    order: section.order,
-                    title: section.title,
-                    isSeparator: section.isSeparator,
-                    newsId,
-                },
-            });
+// async function createSections(
+//     newsId: string,
+//     sections: z.infer<typeof SectionSchema>[]
+// ) {
+//     const createdSections = await Promise.all(
+//         sections.map(async (section) => {
+//             const createdSection = await prisma.section.create({
+//                 data: {
+//                     order: section.order,
+//                     title: section.title,
+//                     isSeparator: section.isSeparator,
+//                     newsId,
+//                 },
+//             });
 
-            if (section.content.type === 'text') {
-                await prisma.sectionText.create({
-                    data: {
-                        text: section.content.data.text,
-                        sectionId: createdSection.id,
-                    },
-                });
-            } else if (section.content.type === 'image') {
-                await prisma.sectionImage.create({
-                    data: {
-                        imageUrl: section.content.data.imageUrl,
-                        alt: section.content.data.alt,
-                        description: section.content.data.description,
-                        sectionId: createdSection.id,
-                    },
-                });
-            }
+//             if (section.content.type === 'text') {
+//                 await prisma.sectionText.create({
+//                     data: {
+//                         text: section.content.data.text,
+//                         sectionId: createdSection.id,
+//                     },
+//                 });
+//             } else if (section.content.type === 'image') {
+//                 await prisma.sectionImage.create({
+//                     data: {
+//                         imageUrl: section.content.data.imageUrl,
+//                         alt: section.content.data.alt,
+//                         description: section.content.data.description,
+//                         sectionId: createdSection.id,
+//                     },
+//                 });
+//             }
 
-            return createdSection;
-        })
-    );
+//             return createdSection;
+//         })
+//     );
 
-    return createdSections;
-}
+//     return createdSections;
+// }
 
 export async function updateSections(
     sections: z.infer<typeof SectionSchema>[]
@@ -291,23 +292,70 @@ export async function createNews(
 
         const { sections, ...newsData } = validation.data;
 
-        // Create news with basic data first
-        const news = await prisma.news.create({
-            data: {
-                ...newsData,
-                path,
-                newsInteractions: {
-                    create: {
-                        popularityScore: 0,
+        // Menggunakan transaksi untuk memastikan semua operasi berhasil termasuk logging
+        const news = await prisma.$transaction(async (tx) => {
+            // Create news with basic data
+            const createdNews = await tx.news.create({
+                data: {
+                    ...newsData,
+                    path,
+                    newsInteractions: {
+                        create: {
+                            popularityScore: 0,
+                        },
                     },
                 },
-            },
+            });
+
+            // Create sections with their content
+            await Promise.all(
+                sections.map(async (section) => {
+                    const createdSection = await tx.section.create({
+                        data: {
+                            order: section.order,
+                            title: section.title,
+                            isSeparator: section.isSeparator,
+                            newsId: createdNews.id,
+                        },
+                    });
+
+                    if (section.content.type === 'text') {
+                        await tx.sectionText.create({
+                            data: {
+                                text: section.content.data.text,
+                                sectionId: createdSection.id,
+                            },
+                        });
+                    } else if (section.content.type === 'image') {
+                        await tx.sectionImage.create({
+                            data: {
+                                imageUrl: section.content.data.imageUrl,
+                                alt: section.content.data.alt,
+                                description: section.content.data.description,
+                                sectionId: createdSection.id,
+                            },
+                        });
+                    }
+                })
+            );
+
+            // Create log entry
+            await createLog(tx, {
+                userId: newsData.userId,
+                action: NEWS_ACTIONS.NEWS_CREATED,
+                description: `Created news article: ${newsData.title}`,
+                metadata: {
+                    newsId: createdNews.id,
+                    path: createdNews.path,
+                    title: newsData.title,
+                    sectionsCount: sections.length
+                }
+            });
+
+            return createdNews;
         });
 
-        // Create sections with their content
-        await createSections(news.id, sections);
-
-        // Fetch and return the complete news with all relations
+        // Fetch complete news with all relations
         const completeNews = await getNewsById(news.id);
         if (!completeNews) throw new Error('Failed to create news');
 
@@ -331,7 +379,7 @@ export async function updateNews(
         const existingPaths = await getAllExistingPaths();
         const currentNews = await prisma.news.findUnique({
             where: { id },
-            select: { path: true },
+            select: { path: true, title: true },
         });
 
         const filteredPaths = existingPaths.filter(
@@ -342,24 +390,71 @@ export async function updateNews(
 
         const { sections, ...newsData } = validation.data;
 
-        // Update the news basic data
-        await prisma.news.update({
-            where: { id },
-            data: {
-                ...newsData,
-                path,
-            },
+        // Menggunakan transaksi untuk update dan logging
+        await prisma.$transaction(async (tx) => {
+            // Update news basic data
+            const updatedNews = await tx.news.update({
+                where: { id },
+                data: {
+                    ...newsData,
+                    path,
+                },
+            });
+
+            // Delete existing sections
+            await tx.section.deleteMany({
+                where: { newsId: id },
+            });
+
+            // Create new sections
+            await Promise.all(
+                sections.map(async (section) => {
+                    const createdSection = await tx.section.create({
+                        data: {
+                            order: section.order,
+                            title: section.title,
+                            isSeparator: section.isSeparator,
+                            newsId: updatedNews.id,
+                        },
+                    });
+
+                    if (section.content.type === 'text') {
+                        await tx.sectionText.create({
+                            data: {
+                                text: section.content.data.text,
+                                sectionId: createdSection.id,
+                            },
+                        });
+                    } else if (section.content.type === 'image') {
+                        await tx.sectionImage.create({
+                            data: {
+                                imageUrl: section.content.data.imageUrl,
+                                alt: section.content.data.alt,
+                                description: section.content.data.description,
+                                sectionId: createdSection.id,
+                            },
+                        });
+                    }
+                })
+            );
+
+            // Create log entry
+            await createLog(tx, {
+                userId: newsData.userId,
+                action: NEWS_ACTIONS.NEWS_UPDATED,
+                description: `Updated news article: ${data.title} (previously: ${currentNews?.title})`,
+                metadata: {
+                    newsId: id,
+                    oldTitle: currentNews?.title,
+                    newTitle: data.title,
+                    oldPath: currentNews?.path,
+                    newPath: path,
+                    sectionsCount: sections.length
+                }
+            });
         });
 
-        // Delete existing sections and their content
-        await prisma.section.deleteMany({
-            where: { newsId: id },
-        });
-
-        // Create new sections with their content
-        await createSections(id, sections);
-
-        // Fetch and return the updated news with all relations
+        // Fetch and return updated news
         const updatedNews = await getNewsById(id);
         if (!updatedNews) throw new Error('Failed to update news');
 
@@ -372,33 +467,64 @@ export async function updateNews(
 
 export async function deleteNews(id: string): Promise<News> {
     try {
-        const news = await prisma.news.delete({
-            where: { id },
-            include: {
-                user: true,
-                subCategory: {
-                    include: {
-                        category: true,
+        // Menggunakan transaksi untuk delete dan logging
+        return await prisma.$transaction(async (tx) => {
+            // Get news details before deletion
+            const newsToDelete = await tx.news.findUnique({
+                where: { id },
+                select: {
+                    title: true,
+                    userId: true,
+                    sections: true
+                }
+            });
+
+            if (!newsToDelete) {
+                throw new Error('News not found');
+            }
+
+            // Delete the news
+            const deletedNews = await tx.news.delete({
+                where: { id },
+                include: {
+                    user: true,
+                    subCategory: {
+                        include: {
+                            category: true,
+                        },
+                    },
+                    sections: {
+                        include: {
+                            sectionImages: true,
+                            sectionTexts: true,
+                        },
+                    },
+                    newsInteractions: {
+                        include: {
+                            likes: true,
+                            bookmarks: true,
+                            comments: true,
+                        },
                     },
                 },
-                sections: {
-                    include: {
-                        sectionImages: true,
-                        sectionTexts: true,
-                    },
-                },
-                newsInteractions: {
-                    include: {
-                        likes: true,
-                        bookmarks: true,
-                        comments: true,
-                    },
-                },
-            },
+            });
+
+            // Create log entry
+            await createLog(tx, {
+                userId: newsToDelete.userId,
+                action: NEWS_ACTIONS.NEWS_DELETED,
+                description: `Deleted news article: ${newsToDelete.title}`,
+                metadata: {
+                    newsId: id,
+                    title: newsToDelete.title,
+                    sectionsCount: newsToDelete.sections.length
+                }
+            });
+
+            return deletedNews as News;
         });
 
         revalidatePath('/news');
-        return news as News;
     } catch (error) {
         handleError(error);
     }

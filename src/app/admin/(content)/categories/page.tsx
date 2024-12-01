@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
 import {
     PlusCircle,
     Search,
@@ -48,6 +47,7 @@ import {
     deleteCategory,
     deleteSubCategory,
 } from '@/actions/category';
+import { toast } from 'sonner';
 
 // Utility function for form fields
 const FormField = ({
@@ -106,7 +106,6 @@ type SubCategoryInput = CategoryInput & {
 };
 
 const Page = () => {
-    const { toast } = useToast();
     const [categories, setCategories] = React.useState<Category[]>([]);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedItem, setSelectedItem] = React.useState<{
@@ -126,62 +125,122 @@ const Page = () => {
 
     // Updated handlers with proper types
     const handleCreateCategory = async (data: CategoryInput) => {
-        const newCategory = await createCategory(data);
-        setCategories(prev => [...prev, newCategory]);
-        return newCategory;
+        try {
+            const newCategory = await createCategory(data);
+            setCategories(prev => [...prev, newCategory]);
+            toast.success('Category created successfully');
+            return newCategory;
+        } catch (error) {
+            if (error instanceof Error) {
+                toast.error('Failed to create category', {
+                    description: error.message,
+                });
+            }
+            throw error;
+        }
     };
 
     const handleCreateSubCategory = async (data: SubCategoryInput) => {
-        const newSubCategory = await createSubCategory(data);
-        setCategories(prev =>
-            prev.map(category =>
-                category.id === data.categoryId
-                    ? {
-                        ...category,
-                        subCategories: [...category.subCategories, newSubCategory]
-                    }
-                    : category
-            )
-        );
-        return newSubCategory;
+        try {
+            const newSubCategory = await createSubCategory(data);
+            setCategories(prev =>
+                prev.map(category =>
+                    category.id === data.categoryId
+                        ? {
+                            ...category,
+                            subCategories: [...category.subCategories, newSubCategory]
+                        }
+                        : category
+                )
+            );
+            toast.success('Subcategory created successfully');
+            return newSubCategory;
+        } catch (error) {
+            if (error instanceof Error) {
+                toast.error('Failed to create subcategory', {
+                    description: error.message,
+                });
+            }
+            throw error;
+        }
     };
 
     const handleUpdateCategory = async (id: string, data: CategoryInput) => {
-        const updatedCategory = await updateCategory(id, data);
-        setCategories(prev =>
-            prev.map(category =>
-                category.id === id ? updatedCategory : category
-            )
-        );
-        return updatedCategory;
+        try {
+            const updatedCategory = await updateCategory(id, data);
+            setCategories(prev =>
+                prev.map(category =>
+                    category.id === id ? updatedCategory : category
+                )
+            );
+            toast.success('Category updated successfully');
+            return updatedCategory;
+        } catch (error) {
+            if (error instanceof Error) {
+                toast.error('Failed to update category', {
+                    description: error.message,
+                });
+            }
+            throw error;
+        }
     };
 
     const handleUpdateSubCategory = async (id: string, data: SubCategoryInput) => {
-        const updatedSubCategory = await updateSubCategory(id, data);
-        setCategories(prev =>
-            prev.map(category => ({
-                ...category,
-                subCategories: category.subCategories.map(sub =>
-                    sub.id === id ? updatedSubCategory : sub
-                )
-            }))
-        );
-        return updatedSubCategory;
+        try {
+            const updatedSubCategory = await updateSubCategory(id, data);
+            setCategories(prev =>
+                prev.map(category => ({
+                    ...category,
+                    subCategories: category.subCategories.map(sub =>
+                        sub.id === id ? updatedSubCategory : sub
+                    )
+                }))
+            );
+            toast.success('Subcategory updated successfully');
+            return updatedSubCategory;
+        } catch (error) {
+            if (error instanceof Error) {
+                toast.error('Failed to update subcategory', {
+                    description: error.message,
+                });
+            }
+            throw error;
+        }
     };
 
     const handleDeleteCategory = async (id: string) => {
-        await deleteCategory(id);
-        setCategories(prev => prev.filter(category => category.id !== id));
+        try {
+            await deleteCategory(id);
+            setCategories(prev => prev.filter(category => category.id !== id));
+            toast.success('Category deleted successfully');
+        } catch (error) {
+            if (error instanceof Error) {
+                toast.error('Failed to delete category', {
+                    description: error.message,
+                });
+            }
+            throw error;
+        }
     };
 
     const handleDeleteSubCategory = async (id: string) => {
-        await deleteSubCategory(id);
-        setCategories(prev =>
-            prev.map(category => ({
-                ...category,
-                subCategories: category.subCategories.filter(sub => sub.id !== id)
-            }))
-        );
+        try {
+            await deleteSubCategory(id);
+            setCategories(prev =>
+                prev.map(category => ({
+                    ...category,
+                    subCategories: category.subCategories.filter(sub => sub.id !== id)
+                }))
+            );
+            toast.success('Subcategory deleted successfully');
+        } catch (error) {
+            if (error instanceof Error) {
+                toast.error('Failed to delete subcategory', {
+                    description: error.message,
+                });
+            }
+            throw error;
+        }
     };
 
     // Fetch categories on mount
@@ -192,17 +251,15 @@ const Page = () => {
                 setCategories(data);
             } catch (error) {
                 if (error instanceof Error) {
-                    toast({
-                        title: 'Error fetching categories',
+                    toast.error('Failed to fetch categories', {
                         description: error.message,
-                        variant: 'destructive',
                     });
                 }
             }
         };
 
         fetchCategories();
-    }, [toast]);
+    }, [setCategories]);
 
     // Filter categories based on search term
     const filteredCategories = categories.filter(
@@ -260,7 +317,6 @@ const Page = () => {
         onClose: () => void;
         editData?: Category | SubCategory | null;
     }) => {
-        const { toast } = useToast();
         const [formData, setFormData] = React.useState<CategoryInput>({
             title: editData?.title || '',
             description: editData?.description || '',
@@ -281,7 +337,6 @@ const Page = () => {
                     } else {
                         await handleUpdateCategory(editData.id, formData);
                     }
-                    toast({ title: 'Updated successfully' });
                 } else {
                     if (isSubCategory) {
                         await handleCreateSubCategory({
@@ -291,15 +346,12 @@ const Page = () => {
                     } else {
                         await handleCreateCategory(formData);
                     }
-                    toast({ title: 'Created successfully' });
                 }
                 onClose();
             } catch (error) {
                 if (error instanceof Error) {
-                    toast({
-                        title: 'Error',
+                    toast.error('Failed to save', {
                         description: error.message,
-                        variant: 'destructive',
                     });
                 }
             }
@@ -367,8 +419,6 @@ const Page = () => {
         onEdit: () => void;
         onAddSub?: () => void;
     }) => {
-        const { toast } = useToast();
-
         const handleDelete = async () => {
             try {
                 if (isSubCategory) {
@@ -376,14 +426,9 @@ const Page = () => {
                 } else {
                     await handleDeleteCategory(item.id);
                 }
-                toast({ title: 'Deleted successfully' });
             } catch (error) {
                 if (error instanceof Error) {
-                    toast({
-                        title: 'Error',
-                        description: error.message,
-                        variant: 'destructive',
-                    });
+                    console.warn(error);
                 }
             }
         };

@@ -71,7 +71,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       },
     }),
     prisma.log.findMany({
-      take: 5,
+      take: 20,
       orderBy: {
         createdAt: 'desc',
       },
@@ -207,6 +207,8 @@ function formatLogAction(action: LogAction): string {
       return 'Added a comment';
     case LOG_ACTIONS.NEWS_LIKED:
       return 'Liked an article';
+    case LOG_ACTIONS.NEWS_UNLIKED:
+      return 'Unliked an article';
     case LOG_ACTIONS.NEWS_BOOKMARKED:
       return 'Bookmarked an article';
     case LOG_ACTIONS.SECTION_ADDED:
@@ -245,7 +247,15 @@ function formatLogAction(action: LogAction): string {
       return 'Updated subcategory';
     case LOG_ACTIONS.SUBCATEGORY_DELETED:
       return 'Deleted subcategory';
+    case LOG_ACTIONS.USER_CREATED:
+      return 'Created a new user';
+    case LOG_ACTIONS.USER_UPDATED:
+      return 'Updated user details';
+    case LOG_ACTIONS.USER_ROLE_CHANGED:
+      return 'Changed user role';
+    case LOG_ACTIONS.USER_DELETED:
+      return 'Deleted user';
     default:
-      return action.replace(/\./g, ' ').toLowerCase();
+        return (action as string).replace(/\./g, ' ').toLowerCase();
   }
 }
