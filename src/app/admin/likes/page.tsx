@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -28,6 +28,7 @@ import {
     Eye,
     MoreVertical,
     XCircle,
+    Loader2,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -37,6 +38,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { removeLike, getLikes } from '@/actions/like';
+import { toast } from 'sonner';
+import Link from 'next/link';
 
 interface Like {
     id: string;
@@ -50,51 +54,92 @@ interface Like {
         id: string;
         title: string;
         popularityScore: number;
+        path: string;
+        thumbnailUrl: string | null;
     };
 }
 
-const LikesPage = () => {
-    // Sample data
-    const likes: Like[] = [
-        {
-            id: '1',
-            createdAt: '2024-11-24T10:00:00Z',
-            user: {
-                id: '1',
-                name: 'John Doe',
-                image: null,
-            },
-            news: {
-                id: '1',
-                title: 'Breaking News: Important Event',
-                popularityScore: 85,
-            },
-        },
-        {
-            id: '2',
-            createdAt: '2024-11-24T09:30:00Z',
-            user: {
-                id: '2',
-                name: 'Jane Smith',
-                image: null,
-            },
-            news: {
-                id: '2',
-                title: 'Technology Update 2024',
-                popularityScore: 92,
-            },
-        },
-    ];
-
+export default function LikesPage() {
+    const [likes, setLikes] = useState<Like[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [dateFilter, setDateFilter] = useState('all');
+    const [loading, setLoading] = useState(false);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-    // Stats calculation
+    // Fetch likes data
+    const fetchLikes = async () => {
+        try {
+            setLoading(true);
+            const response = await getLikes();
+            if (response) {
+                setLikes(response.likes);
+            }
+        } catch (error) {
+            console.error('Error fetching likes:', error);
+            toast.error('Failed to fetch likes');
+        } finally {
+            setLoading(false);
+            setIsInitialLoading(false);
+        }
+    };
+
+    // Initial fetch
+    useEffect(() => {
+        fetchLikes();
+    }, []);
+
+    // Handle remove like
+    const handleRemoveLike = async (newsId: string) => {
+        try {
+            setLoading(true);
+            const result = await removeLike(newsId);
+
+            if (result.success) {
+                await fetchLikes(); // Refresh the likes data
+                toast.success('Like removed successfully');
+            }
+        } catch (error) {
+            console.error('Error removing like:', error);
+            toast.error('Failed to remove like');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter likes based on search term and date filter
+    const filteredLikes = likes.filter(like => {
+        const matchesSearch = searchTerm.toLowerCase() === '' ||
+            like.news.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            like.user.name.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const likeDate = new Date(like.createdAt);
+        const now = new Date();
+        let matchesDate = true;
+
+        switch (dateFilter) {
+            case 'today':
+                matchesDate = likeDate.toDateString() === now.toDateString();
+                break;
+            case 'week':
+                const weekAgo = new Date(now.setDate(now.getDate() - 7));
+                matchesDate = likeDate >= weekAgo;
+                break;
+            case 'month':
+                const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+                matchesDate = likeDate >= monthAgo;
+                break;
+            default:
+                matchesDate = true;
+        }
+
+        return matchesSearch && matchesDate;
+    });
+
+    // Stats calculation from filtered likes
     const stats = {
-        totalLikes: likes.length,
-        popularPosts: likes.filter((like) => like.news.popularityScore > 90)
-            .length,
-        uniqueUsers: new Set(likes.map((like) => like.user.id)).size,
+        totalLikes: filteredLikes.length,
+        popularPosts: filteredLikes.filter((like) => like.news.popularityScore > 90).length,
+        uniqueUsers: new Set(filteredLikes.map((like) => like.user.id)).size,
     };
 
     const getInitials = (name: string) => {
@@ -105,8 +150,16 @@ const LikesPage = () => {
             .toUpperCase();
     };
 
+    if (isInitialLoading) {
+        return (
+            <div className="pt-16 h-[50vh] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
+
     return (
-        <div className="pt-16 space-y-6">
+        <div className="pt-16 space-y-6 container">
             {/* Header Section */}
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-foreground">
@@ -192,9 +245,13 @@ const LikesPage = () => {
                     <Button
                         variant="outline"
                         className="inline-flex items-center gap-2 border-input text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                            setSearchTerm('');
+                            setDateFilter('all');
+                        }}
                     >
                         <Filter className="h-4 w-4" />
-                        Filter
+                        Reset
                     </Button>
                 </div>
             </div>
@@ -204,108 +261,115 @@ const LikesPage = () => {
                 <Table>
                     <TableHeader>
                         <TableRow className="border-border hover:bg-transparent">
-                            <TableHead className="text-muted-foreground">
-                                User
-                            </TableHead>
-                            <TableHead className="text-muted-foreground">
-                                Article
-                            </TableHead>
-                            <TableHead className="text-muted-foreground">
-                                Date
-                            </TableHead>
-                            <TableHead className="text-muted-foreground">
-                                Popularity
-                            </TableHead>
-                            <TableHead className="text-right text-muted-foreground">
-                                Actions
-                            </TableHead>
+                            <TableHead className="text-muted-foreground">User</TableHead>
+                            <TableHead className="text-muted-foreground">Article</TableHead>
+                            <TableHead className="text-muted-foreground">Date</TableHead>
+                            <TableHead className="text-muted-foreground">Popularity</TableHead>
+                            <TableHead className="text-right text-muted-foreground">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {likes.map((like) => (
-                            <TableRow
-                                key={like.id}
-                                className="border-border hover:bg-muted/50"
-                            >
-                                <TableCell className="flex items-center gap-3">
-                                    <Avatar>
-                                        <AvatarImage
-                                            src={like.user.image || undefined}
-                                        />
-                                        <AvatarFallback className="bg-muted text-muted-foreground">
-                                            {getInitials(like.user.name)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <p className="font-medium text-foreground">
-                                            {like.user.name}
-                                        </p>
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                                    <div className="flex items-center justify-center">
+                                        <Loader2 className="h-6 w-6 animate-spin" />
                                     </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex items-center gap-2">
-                                        <Newspaper className="h-4 w-4 text-muted-foreground" />
-                                        <p className="text-sm text-muted-foreground line-clamp-1 hover:text-foreground">
-                                            {like.news.title}
-                                        </p>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground">
-                                    {new Date(
-                                        like.createdAt
-                                    ).toLocaleDateString('en-US', {
-                                        day: 'numeric',
-                                        month: 'long',
-                                        year: 'numeric',
-                                    })}
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-primary"
-                                                style={{
-                                                    width: `${like.news.popularityScore}%`,
-                                                }}
-                                            />
-                                        </div>
-                                        <span className="text-sm text-muted-foreground">
-                                            {like.news.popularityScore}
-                                        </span>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                            >
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent
-                                            align="end"
-                                            className="bg-popover border-border"
-                                        >
-                                            <DropdownMenuItem className="flex items-center gap-2 text-muted-foreground hover:text-foreground focus:text-foreground">
-                                                <Eye className="h-4 w-4" />
-                                                View Article
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="flex items-center gap-2 text-destructive hover:text-destructive focus:text-destructive">
-                                                <XCircle className="h-4 w-4" />
-                                                Remove Like
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        ) : filteredLikes.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                                    No likes found
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filteredLikes.map((like) => (
+                                <TableRow key={like.id} className="border-border hover:bg-muted/50">
+                                    <TableCell className="flex items-center gap-3">
+                                        <Avatar>
+                                            <AvatarImage
+                                                src={like.user.image || undefined}
+                                                alt={like.user.name}
+                                            />
+                                            <AvatarFallback className="bg-muted text-muted-foreground">
+                                                {getInitials(like.user.name)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-medium text-foreground">
+                                                {like.user.name}
+                                            </p>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <Newspaper className="h-4 w-4 text-muted-foreground" />
+                                            <p className="text-sm text-muted-foreground line-clamp-1 hover:text-foreground">
+                                                {like.news.title}
+                                            </p>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                        {new Date(like.createdAt).toLocaleDateString('en-US', {
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric',
+                                        })}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-primary"
+                                                    style={{
+                                                        width: `${like.news.popularityScore}%`,
+                                                    }}
+                                                />
+                                            </div>
+                                            <span className="text-sm text-muted-foreground">
+                                                {like.news.popularityScore}
+                                            </span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                                    disabled={loading}
+                                                >
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent
+                                                align="end"
+                                                className="bg-popover border-border"
+                                            >
+                                                <Link href={`/news/${like.news.path}`}>
+                                                    <DropdownMenuItem className="flex items-center gap-2 text-muted-foreground hover:text-foreground focus:text-foreground">
+                                                        <Eye className="h-4 w-4" />
+                                                        View Article
+                                                    </DropdownMenuItem>
+                                                </Link>
+                                                <DropdownMenuItem
+                                                    className="flex items-center gap-2 text-destructive hover:text-destructive focus:text-destructive"
+                                                    onClick={() => handleRemoveLike(like.news.id)}
+                                                    disabled={loading}
+                                                >
+                                                    <XCircle className="h-4 w-4" />
+                                                    Remove Like
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
                     </TableBody>
                 </Table>
             </div>
         </div>
     );
-};
-
-export default LikesPage;
+}

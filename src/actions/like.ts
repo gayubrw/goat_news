@@ -1,9 +1,75 @@
 'use server';
 
-import { prisma } from '@/lib/prisma';
-import { getCurrentUserData } from '@/actions/user';
-import { revalidatePath } from 'next/cache';
-import { INTERACTION_ACTIONS, createLog } from '@/lib/log';
+import { prisma } from '@/lib/prisma'
+import { getClerkUser, getCurrentUserData } from '@/actions/user'
+import { revalidatePath } from 'next/cache'
+import { INTERACTION_ACTIONS, createLog } from '@/lib/log'
+
+export async function getLikes() {
+    try {
+      const user = await getCurrentUserData()
+      if (!user) {
+        throw new Error('Unauthorized')
+      }
+
+      const likes = await prisma.like.findMany({
+        include: {
+          userInteraction: {
+            include: {
+              user: true
+            }
+          },
+          newsInteraction: {
+            include: {
+              news: {
+                select: {
+                  id: true,
+                  title: true,
+                  path: true,
+                  thumbnailUrl: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      // Transform data structure and get Clerk user details
+      const transformedLikes = await Promise.all(likes.map(async like => {
+        const clerkUser = await getClerkUser(like.userInteraction.user.clerkId)
+        const fullName = clerkUser ?
+          `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() :
+          'Anonymous User'
+
+        return {
+          id: like.id,
+          createdAt: like.createdAt.toISOString(),
+          user: {
+            id: like.userInteraction.user.id,
+            name: fullName,
+            image: clerkUser?.imageUrl || null
+          },
+          news: {
+            id: like.newsInteraction.news.id,
+            title: like.newsInteraction.news.title,
+            popularityScore: like.newsInteraction.popularityScore,
+            path: like.newsInteraction.news.path,
+            thumbnailUrl: like.newsInteraction.news.thumbnailUrl
+          }
+        }
+      }))
+
+      return { likes: transformedLikes }
+    } catch (error) {
+      console.error('[GET_LIKES]', error)
+      throw error
+    }
+  }
+
+
 
 export async function addLike(newsId: string) {
     try {
