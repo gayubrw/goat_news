@@ -3,7 +3,6 @@ import { Card } from '@/components/ui/card';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { prisma } from '@/lib/prisma';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -13,7 +12,7 @@ import {
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { getNews } from '@/actions/news';
-import { getClerkUser, getCurrentUserData } from '@/actions/user';
+import { getClerkUser } from '@/actions/user';
 import { format } from 'date-fns';
 import {
     CopyLinkButton,
@@ -23,7 +22,6 @@ import {
 import { isNewsLiked } from '@/actions/like';
 import LikeButton from '@/components/like-button';
 import BookmarkButton from '@/components/bookmark-button';
-import { getUserCollections } from '@/actions/collection';
 
 type Params = {
     categories: string;
@@ -113,49 +111,6 @@ export default async function NewsPage({
         params.news
     );
     let authorData = null;
-
-    // Get user and bookmark data
-    const user = await getCurrentUserData();
-    const collections = await getUserCollections();
-
-    // Get bookmark details
-    const bookmarkDetails = await (async () => {
-        if (!user) return { isBookmarked: false, bookmarkId: undefined, collectionId: undefined };
-
-        const userInteraction = await prisma.userInteraction.findFirst({
-            where: { userId: user.id },
-            include: {
-                collections: {
-                    include: {
-                        bookmarks: {
-                            include: {
-                                newsInteraction: true
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        if (!userInteraction) {
-            return { isBookmarked: false, bookmarkId: undefined, collectionId: undefined };
-        }
-
-        for (const collection of userInteraction.collections) {
-            const bookmark = collection.bookmarks.find(
-                b => b.newsInteraction.newsId === newsData.id
-            );
-            if (bookmark) {
-                return {
-                    isBookmarked: true,
-                    bookmarkId: bookmark.id,
-                    collectionId: collection.id
-                };
-            }
-        }
-
-        return { isBookmarked: false, bookmarkId: undefined, collectionId: undefined };
-    })();
 
     try {
         authorData = await getClerkUser(newsData.user.clerkId);
@@ -336,10 +291,6 @@ export default async function NewsPage({
                                 <LikeButton newsId={newsData.id} initialIsLiked={isLiked} />
                                 <BookmarkButton
                                     newsId={newsData.id}
-                                    initialIsBookmarked={bookmarkDetails.isBookmarked}
-                                    initialBookmarkId={bookmarkDetails.bookmarkId ?? undefined}
-                                    initialCollectionId={bookmarkDetails.collectionId ?? undefined}
-                                    collections={collections}
                                 />
                             </div>
                             <div>
