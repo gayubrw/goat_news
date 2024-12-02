@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { prisma } from '@/lib/prisma';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -12,7 +13,7 @@ import {
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { getNews } from '@/actions/news';
-import { getClerkUser } from '@/actions/user';
+import { getClerkUser, getCurrentUserData } from '@/actions/user';
 import { format } from 'date-fns';
 import {
     CopyLinkButton,
@@ -21,6 +22,8 @@ import {
 } from '@/components/share-button';
 import { isNewsLiked } from '@/actions/like';
 import LikeButton from '@/components/like-button';
+import BookmarkButton from '@/components/bookmark-button';
+import { getUserCollections } from '@/actions/collection';
 
 type Params = {
     categories: string;
@@ -111,6 +114,49 @@ export default async function NewsPage({
     );
     let authorData = null;
 
+    // Get user and bookmark data
+    const user = await getCurrentUserData();
+    const collections = await getUserCollections();
+
+    // Get bookmark details
+    const bookmarkDetails = await (async () => {
+        if (!user) return { isBookmarked: false, bookmarkId: undefined, collectionId: undefined };
+
+        const userInteraction = await prisma.userInteraction.findFirst({
+            where: { userId: user.id },
+            include: {
+                collections: {
+                    include: {
+                        bookmarks: {
+                            include: {
+                                newsInteraction: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!userInteraction) {
+            return { isBookmarked: false, bookmarkId: undefined, collectionId: undefined };
+        }
+
+        for (const collection of userInteraction.collections) {
+            const bookmark = collection.bookmarks.find(
+                b => b.newsInteraction.newsId === newsData.id
+            );
+            if (bookmark) {
+                return {
+                    isBookmarked: true,
+                    bookmarkId: bookmark.id,
+                    collectionId: collection.id
+                };
+            }
+        }
+
+        return { isBookmarked: false, bookmarkId: undefined, collectionId: undefined };
+    })();
+
     try {
         authorData = await getClerkUser(newsData.user.clerkId);
     } catch (error) {
@@ -178,7 +224,6 @@ export default async function NewsPage({
                                         width={40}
                                         height={40}
                                         className="rounded-full h-[40px] w-[40px] object-cover"
-
                                     />
                                 ) : (
                                     <div className="h-10 w-10 rounded-full bg-zinc-200 dark:bg-zinc-700" />
@@ -263,9 +308,7 @@ export default async function NewsPage({
                                                     >
                                                         <div className="aspect-video relative rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                                                             <Image
-                                                                src={
-                                                                    image.imageUrl
-                                                                }
+                                                                src={image.imageUrl}
                                                                 alt={image.alt}
                                                                 className="w-full h-full object-cover"
                                                                 fill
@@ -274,9 +317,7 @@ export default async function NewsPage({
                                                         </div>
                                                         {image.description && (
                                                             <figcaption className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
-                                                                {
-                                                                    image.description
-                                                                }
+                                                                {image.description}
                                                             </figcaption>
                                                         )}
                                                     </figure>
@@ -291,8 +332,15 @@ export default async function NewsPage({
                     {/* Share Section */}
                     <div className="mt-8 pt-8 border-t border-zinc-200 dark:border-zinc-800">
                         <div className="flex justify-between items-center gap-2">
-                            <div>
-                            <LikeButton newsId={newsData.id} initialIsLiked={isLiked} />
+                            <div className="flex gap-2">
+                                <LikeButton newsId={newsData.id} initialIsLiked={isLiked} />
+                                <BookmarkButton
+                                    newsId={newsData.id}
+                                    initialIsBookmarked={bookmarkDetails.isBookmarked}
+                                    initialBookmarkId={bookmarkDetails.bookmarkId ?? undefined}
+                                    initialCollectionId={bookmarkDetails.collectionId ?? undefined}
+                                    collections={collections}
+                                />
                             </div>
                             <div>
                                 <ShareNativeButton

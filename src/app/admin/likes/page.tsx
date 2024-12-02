@@ -319,14 +319,6 @@ export default function LikesPage() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-primary"
-                                                    style={{
-                                                        width: `${like.news.popularityScore}%`,
-                                                    }}
-                                                />
-                                            </div>
                                             <span className="text-sm text-muted-foreground">
                                                 {like.news.popularityScore}
                                             </span>
