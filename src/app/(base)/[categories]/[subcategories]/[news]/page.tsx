@@ -22,6 +22,7 @@ import {
 import { isNewsLiked } from '@/actions/like';
 import LikeButton from '@/components/like-button';
 import BookmarkButton from '@/components/bookmark-button';
+import CommentSection from '@/components/comment';
 
 type Params = {
     categories: string;
@@ -303,6 +304,12 @@ export default async function NewsPage({
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div className="mt-8">
+                    <CommentSection
+                        newsId={newsData.id}
+                    />
                 </div>
 
                 {/* Related Stories */}

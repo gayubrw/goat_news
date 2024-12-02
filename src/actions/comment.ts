@@ -180,50 +180,44 @@ export async function addComment(data: z.infer<typeof CommentSchema>) {
     }
   }
 
-export async function getUserComments() {
-  try {
-    const user = await getCurrentUserData()
-    if (!user) {
-      throw new Error('Unauthorized')
-    }
+  export async function getUserComments() {
+    try {
+      const user = await getCurrentUserData()
+      if (!user) {
+        throw new Error('Unauthorized')
+      }
 
-    const userWithComments = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: {
-        userInteractions: {
-          include: {
-            comments: {
-              include: {
-                newsInteraction: {
-                  include: {
-                    news: {
-                      include: {
-                        subCategory: {
-                          include: {
-                            category: true
-                          }
-                        }
-                      }
+      const comments = await prisma.comment.findMany({
+        where: {
+          userInteraction: {
+            user: {
+              id: user.id
+            }
+          }
+        },
+        include: {
+          newsInteraction: {
+            include: {
+              news: {
+                include: {
+                  subCategory: {
+                    include: {
+                      category: true
                     }
                   }
                 }
-              },
-              orderBy: {
-                createdAt: 'desc'
               }
             }
           }
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
-      }
-    })
+      })
 
-    if (!userWithComments?.userInteractions[0]) {
-      return []
+      return comments
+    } catch (error) {
+      console.error('[GET_USER_COMMENTS]', error)
+      throw new Error('Failed to fetch comments')
     }
-
-    return userWithComments.userInteractions[0].comments
-  } catch (error) {
-    console.error('[GET_USER_COMMENTS]', error)
-    throw new Error('Failed to fetch comments')
   }
-}
