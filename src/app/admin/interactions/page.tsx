@@ -1,30 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Heart, Bookmark, MessageSquare, Search, Filter } from 'lucide-react';
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ResponsiveContainer,
-    LineChart,
-    Line,
-} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { getInteractionsData } from '@/actions/interactions';
 
 interface DailyStats {
     date: string;
@@ -51,61 +35,54 @@ interface NewsInteraction {
     bookmarks: number;
 }
 
+interface InteractionsData {
+    dailyStats: DailyStats[];
+    userInteractions: UserInteraction[];
+    newsInteractions: NewsInteraction[];
+}
+
 const InteractionsPage = () => {
     const [dateRange, setDateRange] = useState('week');
     const [searchTerm, setSearchTerm] = useState('');
+    const [data, setData] = useState<InteractionsData | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    // Sample data
-    const dailyStats: DailyStats[] = [
-        { date: '2024-11-18', likes: 45, comments: 23, bookmarks: 12 },
-        { date: '2024-11-19', likes: 52, comments: 28, bookmarks: 15 },
-        { date: '2024-11-20', likes: 48, comments: 25, bookmarks: 18 },
-        { date: '2024-11-21', likes: 70, comments: 35, bookmarks: 22 },
-        { date: '2024-11-22', likes: 65, comments: 30, bookmarks: 20 },
-        { date: '2024-11-23', likes: 58, comments: 27, bookmarks: 16 },
-        { date: '2024-11-24', likes: 63, comments: 32, bookmarks: 19 },
-    ];
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const result = await getInteractionsData(dateRange);
+                const normalizedResult = {
+                    ...result,
+                    dailyStats: result.dailyStats.map(stat => ({
+                        ...stat,
+                        likes: Number(stat.likes),
+                        comments: Number(stat.comments),
+                        bookmarks: Number(stat.bookmarks),
+                    })),
+                };
+                setData(normalizedResult);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const userInteractions: UserInteraction[] = [
-        {
-            userId: '1',
-            userName: 'John Doe',
-            contributionScore: 85,
-            likes: 32,
-            comments: 15,
-            bookmarks: 8,
-        },
-        {
-            userId: '2',
-            userName: 'Jane Smith',
-            contributionScore: 92,
-            likes: 45,
-            comments: 28,
-            bookmarks: 12,
-        },
-    ];
+        fetchData();
+    }, [dateRange]);
 
-    const newsInteractions: NewsInteraction[] = [
-        {
-            newsId: '1',
-            title: 'Breaking News: Important Event',
-            popularityScore: 85,
-            likes: 125,
-            comments: 45,
-            bookmarks: 30,
-        },
-        {
-            newsId: '2',
-            title: 'Technology Update 2024',
-            popularityScore: 92,
-            likes: 180,
-            comments: 65,
-            bookmarks: 42,
-        },
-    ];
+    if (loading || !data) return <div>Loading...</div>;
 
-    // Calculate total stats
-    const totalStats = dailyStats.reduce(
+    const filteredUsers = data.userInteractions.filter(user =>
+        user.userName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const filteredNews = data.newsInteractions.filter(news =>
+        news.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const totalStats = data.dailyStats.reduce(
         (acc, curr) => ({
             likes: acc.likes + curr.likes,
             comments: acc.comments + curr.comments,
@@ -136,51 +113,37 @@ const InteractionsPage = () => {
             <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total Likes
-                        </CardTitle>
+                        <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
                         <Heart className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">
-                            {totalStats.likes}
-                        </div>
+                        <div className="text-2xl font-bold">{totalStats.likes}</div>
                         <p className="text-xs text-muted-foreground">
-                            +{dailyStats[dailyStats.length - 1].likes} hari ini
+                            +{data.dailyStats[0]?.likes || 0} hari ini
                         </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total Komentar
-                        </CardTitle>
+                        <CardTitle className="text-sm font-medium">Total Komentar</CardTitle>
                         <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">
-                            {totalStats.comments}
-                        </div>
+                        <div className="text-2xl font-bold">{totalStats.comments}</div>
                         <p className="text-xs text-muted-foreground">
-                            +{dailyStats[dailyStats.length - 1].comments} hari
-                            ini
+                            +{data.dailyStats[0]?.comments || 0} hari ini
                         </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total Bookmark
-                        </CardTitle>
+                        <CardTitle className="text-sm font-medium">Total Bookmark</CardTitle>
                         <Bookmark className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">
-                            {totalStats.bookmarks}
-                        </div>
+                        <div className="text-2xl font-bold">{totalStats.bookmarks}</div>
                         <p className="text-xs text-muted-foreground">
-                            +{dailyStats[dailyStats.length - 1].bookmarks} hari
-                            ini
+                            +{data.dailyStats[0]?.bookmarks || 0} hari ini
                         </p>
                     </CardContent>
                 </Card>
@@ -202,30 +165,15 @@ const InteractionsPage = () => {
                         </CardHeader>
                         <CardContent className="h-[400px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={dailyStats}>
+                                <LineChart data={data.dailyStats}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="date" />
                                     <YAxis />
                                     <Tooltip />
                                     <Legend />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="likes"
-                                        stroke="#8884d8"
-                                        name="Likes"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="comments"
-                                        stroke="#82ca9d"
-                                        name="Komentar"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="bookmarks"
-                                        stroke="#ffc658"
-                                        name="Bookmark"
-                                    />
+                                    <Line type="monotone" dataKey="likes" stroke="#8884d8" name="Likes" />
+                                    <Line type="monotone" dataKey="comments" stroke="#82ca9d" name="Komentar" />
+                                    <Line type="monotone" dataKey="bookmarks" stroke="#ffc658" name="Bookmark" />
                                 </LineChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -244,10 +192,7 @@ const InteractionsPage = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <Button
-                            variant="outline"
-                            className="flex items-center gap-2"
-                        >
+                        <Button variant="outline" className="flex items-center gap-2">
                             <Filter size={20} />
                             Filter
                         </Button>
@@ -259,27 +204,15 @@ const InteractionsPage = () => {
                         </CardHeader>
                         <CardContent className="h-[400px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={userInteractions}>
+                                <BarChart data={filteredUsers}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="userName" />
                                     <YAxis />
                                     <Tooltip />
                                     <Legend />
-                                    <Bar
-                                        dataKey="likes"
-                                        fill="#8884d8"
-                                        name="Likes"
-                                    />
-                                    <Bar
-                                        dataKey="comments"
-                                        fill="#82ca9d"
-                                        name="Komentar"
-                                    />
-                                    <Bar
-                                        dataKey="bookmarks"
-                                        fill="#ffc658"
-                                        name="Bookmark"
-                                    />
+                                    <Bar dataKey="likes" fill="#8884d8" name="Likes" />
+                                    <Bar dataKey="comments" fill="#82ca9d" name="Komentar" />
+                                    <Bar dataKey="bookmarks" fill="#ffc658" name="Bookmark" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -298,10 +231,7 @@ const InteractionsPage = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <Button
-                            variant="outline"
-                            className="flex items-center gap-2"
-                        >
+                        <Button variant="outline" className="flex items-center gap-2">
                             <Filter size={20} />
                             Filter
                         </Button>
@@ -313,27 +243,15 @@ const InteractionsPage = () => {
                         </CardHeader>
                         <CardContent className="h-[400px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={newsInteractions}>
+                                <BarChart data={filteredNews}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="title" />
                                     <YAxis />
                                     <Tooltip />
                                     <Legend />
-                                    <Bar
-                                        dataKey="likes"
-                                        fill="#8884d8"
-                                        name="Likes"
-                                    />
-                                    <Bar
-                                        dataKey="comments"
-                                        fill="#82ca9d"
-                                        name="Komentar"
-                                    />
-                                    <Bar
-                                        dataKey="bookmarks"
-                                        fill="#ffc658"
-                                        name="Bookmark"
-                                    />
+                                    <Bar dataKey="likes" fill="#8884d8" name="Likes" />
+                                    <Bar dataKey="comments" fill="#82ca9d" name="Komentar" />
+                                    <Bar dataKey="bookmarks" fill="#ffc658" name="Bookmark" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
