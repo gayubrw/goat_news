@@ -121,46 +121,6 @@ function handleError(error: unknown): never {
     }
 }
 
-// async function createSections(
-//     newsId: string,
-//     sections: z.infer<typeof SectionSchema>[]
-// ) {
-//     const createdSections = await Promise.all(
-//         sections.map(async (section) => {
-//             const createdSection = await prisma.section.create({
-//                 data: {
-//                     order: section.order,
-//                     title: section.title,
-//                     isSeparator: section.isSeparator,
-//                     newsId,
-//                 },
-//             });
-
-//             if (section.content.type === 'text') {
-//                 await prisma.sectionText.create({
-//                     data: {
-//                         text: section.content.data.text,
-//                         sectionId: createdSection.id,
-//                     },
-//                 });
-//             } else if (section.content.type === 'image') {
-//                 await prisma.sectionImage.create({
-//                     data: {
-//                         imageUrl: section.content.data.imageUrl,
-//                         alt: section.content.data.alt,
-//                         description: section.content.data.description,
-//                         sectionId: createdSection.id,
-//                     },
-//                 });
-//             }
-
-//             return createdSection;
-//         })
-//     );
-
-//     return createdSections;
-// }
-
 export async function updateSections(
     sections: z.infer<typeof SectionSchema>[]
 ) {

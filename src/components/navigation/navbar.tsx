@@ -8,6 +8,8 @@ import {
     LogOut,
     Settings,
     LayoutDashboard,
+    Heart,
+    Bookmark,
 } from 'lucide-react';
 import { useUser, useAuth } from '@clerk/nextjs';
 import ModeToggle from '@/components/mode-toggle';
@@ -215,6 +217,18 @@ const Navbar = () => {
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                        <Link href="/likes" className="flex items-center">
+                            <Heart className="w-4 h-4 mr-2" />
+                            Likes
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/collections" className="flex items-center">
+                            <Bookmark className="w-4 h-4 mr-2" />
+                            Collections
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                         <Link href="/settings" className="flex items-center">
                             <Settings className="w-4 h-4 mr-2" />
                             Settings
@@ -334,41 +348,39 @@ const Navbar = () => {
                                 <div className="flex flex-col gap-4 mt-4">
                                     {isLoading
                                         ? Array(5)
-                                              .fill(0)
-                                              .map((_, i) => (
-                                                  <div
-                                                      key={i}
-                                                      className="h-10 bg-muted animate-pulse rounded-md"
-                                                  />
-                                              ))
+                                            .fill(0)
+                                            .map((_, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="h-10 bg-muted animate-pulse rounded-md"
+                                                />
+                                            ))
                                         : menuItems.map((item) => {
-                                              const isActive = isRouteActive(
-                                                  item.href
-                                              );
-                                              return (
-                                                  <Button
-                                                      key={item.label}
-                                                      variant={
-                                                          isActive
-                                                              ? 'secondary'
-                                                              : 'ghost'
-                                                      }
-                                                      className="w-full justify-start"
-                                                      asChild
-                                                  >
-                                                      <Link
-                                                          href={item.href}
-                                                          onClick={() =>
-                                                              setIsMenuOpen(
-                                                                  false
-                                                              )
-                                                          }
-                                                      >
-                                                          {item.label}
-                                                      </Link>
-                                                  </Button>
-                                              );
-                                          })}
+                                            const isActive = isRouteActive(
+                                                item.href
+                                            );
+                                            return (
+                                                <Button
+                                                    key={item.label}
+                                                    variant={
+                                                        isActive
+                                                            ? 'secondary'
+                                                            : 'ghost'
+                                                    }
+                                                    className="w-full justify-start"
+                                                    asChild
+                                                >
+                                                    <Link
+                                                        href={item.href}
+                                                        onClick={() =>
+                                                            setIsMenuOpen(false)
+                                                        }
+                                                    >
+                                                        {item.label}
+                                                    </Link>
+                                                </Button>
+                                            );
+                                        })}
 
                                     {isSignedIn && (
                                         <>
@@ -403,6 +415,36 @@ const Navbar = () => {
                                                 >
                                                     <User className="w-4 h-4 mr-2" />
                                                     Profile
+                                                </Link>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                className="w-full justify-start"
+                                                asChild
+                                            >
+                                                <Link
+                                                    href="/likes"
+                                                    onClick={() =>
+                                                        setIsMenuOpen(false)
+                                                    }
+                                                >
+                                                    <Heart className="w-4 h-4 mr-2" />
+                                                    Likes
+                                                </Link>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                className="w-full justify-start"
+                                                asChild
+                                            >
+                                                <Link
+                                                    href="/collections"
+                                                    onClick={() =>
+                                                        setIsMenuOpen(false)
+                                                    }
+                                                >
+                                                    <Bookmark className="w-4 h-4 mr-2" />
+                                                    Collections
                                                 </Link>
                                             </Button>
                                             <Button
