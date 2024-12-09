@@ -259,3 +259,4 @@ function formatLogAction(action: LogAction): string {
         return (action as string).replace(/\./g, ' ').toLowerCase();
   }
 }
+
