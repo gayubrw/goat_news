@@ -45,8 +45,17 @@ export async function getDashboardData(): Promise<DashboardData> {
   const endYesterday = endOfDay(addDays(today, -1));
   const startLastWeek = startOfDay(addDays(today, -7));
 
-  // Get logs for metrics calculation
-  const [todayLogs, yesterdayLogs, weekLogs, recentActivities] = await Promise.all([
+  // Get logs and metrics data
+  const [
+    todayLogs,
+    yesterdayLogs,
+    weekLogs,
+    recentActivities,
+    // Comment-specific metrics
+    todayNewComments,
+    yesterdayNewComments,
+    // totalComments
+  ] = await Promise.all([
     prisma.log.count({
       where: {
         createdAt: {
@@ -79,6 +88,26 @@ export async function getDashboardData(): Promise<DashboardData> {
         user: true,
       },
     }),
+    // Today's new comments
+    prisma.comment.count({
+      where: {
+        createdAt: {
+          gte: startToday,
+          lte: endToday,
+        },
+      },
+    }),
+    // Yesterday's new comments
+    prisma.comment.count({
+      where: {
+        createdAt: {
+          gte: startYesterday,
+          lte: endYesterday,
+        },
+      },
+    }),
+    // Total comments
+    prisma.comment.count()
   ]);
 
   // Calculate trends
@@ -111,24 +140,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     },
   });
 
-  const newComments = await prisma.log.count({
-    where: {
-      action: LOG_ACTIONS.COMMENT_ADDED,
-      createdAt: {
-        gte: startToday,
-      },
-    },
-  });
-
-  const yesterdayComments = await prisma.log.count({
-    where: {
-      action: LOG_ACTIONS.COMMENT_ADDED,
-      createdAt: {
-        gte: startYesterday,
-        lte: endYesterday,
-      },
-    },
-  });
+  // Calculate comments trend
+  const commentsTrend = calculateTrend(todayNewComments, yesterdayNewComments);
 
   // Format activities
   const activities: Activity[] = await Promise.all(
@@ -187,11 +200,11 @@ export async function getDashboardData(): Promise<DashboardData> {
         trend: calculateTrend(todayLogs, yesterdayLogs),
       },
       newComments: {
-        value: newComments.toString(),
-        trend: calculateTrend(newComments, yesterdayComments),
-      },
+        value: todayNewComments.toString(),
+        trend: commentsTrend
+      }
     },
-    activities,
+    activities
   };
 }
 

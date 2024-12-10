@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUserData } from '@/actions/user'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { createLog, LOG_ACTIONS } from '@/lib/log'
 
 const CommentSchema = z.object({
   text: z.string().min(1, 'Comment cannot be empty').max(500, 'Comment is too long'),
@@ -43,11 +44,29 @@ export async function addComment(data: z.infer<typeof CommentSchema>) {
         }
 
         // Create the comment
-        await tx.comment.create({
+        const comment = await tx.comment.create({
           data: {
             text: data.text,
             newsInteractionId: newsInteraction.id,
             userInteractionId: userInteraction.id
+          }
+        })
+
+        // Get the news details for the log
+        const news = await tx.news.findUnique({
+          where: { id: data.newsId },
+          select: { title: true }
+        })
+
+        // Create log entry for the comment
+        await createLog(tx, {
+          userId: user.id,
+          action: LOG_ACTIONS.COMMENT_ADDED,
+          description: `Added a comment to "${news?.title}"`,
+          metadata: {
+            commentId: comment.id,
+            newsId: data.newsId,
+            commentText: data.text.substring(0, 100) // Store first 100 chars of comment
           }
         })
 
@@ -73,6 +92,7 @@ export async function addComment(data: z.infer<typeof CommentSchema>) {
       })
 
       revalidatePath(`/news/${data.newsId}`)
+      revalidatePath('/admin') // Revalidate dashboard
       return { success: true }
     } catch (error) {
       console.error('[ADD_COMMENT]', error)
@@ -120,6 +140,17 @@ export async function addComment(data: z.infer<typeof CommentSchema>) {
           where: { id: commentId }
         })
 
+        // Create log entry for the deleted comment
+        await createLog(tx, {
+          userId: user.id,
+          action: LOG_ACTIONS.COMMENT_DELETED,
+          description: `Deleted comment from "${comment.newsInteraction.news.title}"`,
+          metadata: {
+            commentId,
+            newsId: comment.newsInteraction.news.id
+          }
+        })
+
         // Decrement popularity score for the news
         await tx.newsInteraction.update({
           where: { id: comment.newsInteractionId },
@@ -142,6 +173,7 @@ export async function addComment(data: z.infer<typeof CommentSchema>) {
       })
 
       revalidatePath(`/news/${comment.newsInteraction.news.id}`)
+      revalidatePath('/admin') // Revalidate dashboard
       return { success: true }
     } catch (error) {
       console.error('[DELETE_COMMENT]', error)
