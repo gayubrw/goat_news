@@ -1,15 +1,39 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Navbar, Sidebar, Footer } from '@/components/admin/navigation';
+import { getCurrentUserData } from '@/actions/user';
 
 interface AdminLayoutProps {
     children: React.ReactNode;
 }
 
 const Layout: React.FC<AdminLayoutProps> = ({ children }) => {
+    const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        // Check admin access
+        const checkAdminAccess = async () => {
+            try {
+                const user = await getCurrentUserData();
+                console.log('user', user);
+                if (!user || user.role !== 'admin') {
+                    router.push('/');
+                }
+            } catch (error) {
+                console.error('Error checking admin access:', error);
+                router.push('/');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        checkAdminAccess();
+    }, [router]);
 
     // Handle screen resize
     useEffect(() => {
@@ -30,6 +54,14 @@ const Layout: React.FC<AdminLayoutProps> = ({ children }) => {
             window.removeEventListener('resize', checkMobile);
         };
     }, []);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background">

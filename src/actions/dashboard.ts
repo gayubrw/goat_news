@@ -1,3 +1,4 @@
+// dashboard.ts
 import { Prisma, PrismaClient } from '@prisma/client';
 import { LOG_ACTIONS, type LogAction } from '@/lib/log';
 import { addDays, startOfDay, endOfDay } from 'date-fns';
@@ -12,7 +13,7 @@ type Metric = {
 
 type DashboardMetrics = {
   totalNews: Metric;
-  activeNews: Metric;
+  totalLikes: Metric;
   totalReaders: Metric;
   newComments: Metric;
 };
@@ -37,176 +38,175 @@ export type DashboardData = {
 };
 
 export async function getDashboardData(): Promise<DashboardData> {
-  // Get date ranges for comparison
-  const today = new Date();
-  const startToday = startOfDay(today);
-  const endToday = endOfDay(today);
-  const startYesterday = startOfDay(addDays(today, -1));
-  const endYesterday = endOfDay(addDays(today, -1));
-  const startLastWeek = startOfDay(addDays(today, -7));
+    const today = new Date();
+    const startToday = startOfDay(today);
+    const endToday = endOfDay(today);
+    const startYesterday = startOfDay(addDays(today, -1));
+    const endYesterday = endOfDay(addDays(today, -1));
 
-  // Get logs and metrics data
-  const [
-    todayLogs,
-    yesterdayLogs,
-    weekLogs,
-    recentActivities,
-    // Comment-specific metrics
-    todayNewComments,
-    yesterdayNewComments,
-    // totalComments
-  ] = await Promise.all([
-    prisma.log.count({
-      where: {
-        createdAt: {
-          gte: startToday,
-          lte: endToday,
-        },
-      },
-    }),
-    prisma.log.count({
-      where: {
-        createdAt: {
-          gte: startYesterday,
-          lte: endYesterday,
-        },
-      },
-    }),
-    prisma.log.count({
-      where: {
-        createdAt: {
-          gte: startLastWeek,
-        },
-      },
-    }),
-    prisma.log.findMany({
-      take: 20,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        user: true,
-      },
-    }),
-    // Today's new comments
-    prisma.comment.count({
-      where: {
-        createdAt: {
-          gte: startToday,
-          lte: endToday,
-        },
-      },
-    }),
-    // Yesterday's new comments
-    prisma.comment.count({
-      where: {
-        createdAt: {
-          gte: startYesterday,
-          lte: endYesterday,
-        },
-      },
-    }),
-    // Total comments
-    prisma.comment.count()
-  ]);
-
-  // Calculate trends
-  const calculateTrend = (current: number, previous: number) => {
-    if (previous === 0) return 0;
-    return ((current - previous) / previous) * 100;
-  };
-
-  // Get news-related metrics
-  const newsCreated = await prisma.log.count({
-    where: {
-      action: LOG_ACTIONS.NEWS_CREATED,
-    },
-  });
-
-  const activeNewsCount = await prisma.log.count({
-    where: {
-      action: LOG_ACTIONS.NEWS_UPDATED,
-      createdAt: {
-        gte: startLastWeek,
-      },
-    },
-  });
-
-  const totalReaders = await prisma.log.count({
-    where: {
-      action: {
-        in: [LOG_ACTIONS.NEWS_LIKED, LOG_ACTIONS.NEWS_BOOKMARKED],
-      },
-    },
-  });
-
-  // Calculate comments trend
-  const commentsTrend = calculateTrend(todayNewComments, yesterdayNewComments);
-
-  // Format activities
-  const activities: Activity[] = await Promise.all(
-    recentActivities.map(async (log) => {
-      try {
-        const clerkUser = await getClerkUser(log.user.clerkId);
-
-        return {
-          id: log.id,
-          user: {
-            clerkId: log.user.clerkId,
-            firstName: clerkUser?.firstName || null,
-            lastName: clerkUser?.lastName || null,
-            imageUrl: clerkUser?.imageUrl || null,
+    // Get logs and metrics data
+    const [
+      todayArticles,
+      yesterdayArticles,
+      recentActivities,
+      todayNewComments,
+      yesterdayNewComments,
+      todayLikes,
+      yesterdayLikes,
+    ] = await Promise.all([
+      // Count articles created today
+      prisma.news.count({
+        where: {
+          createdAt: {
+            gte: startToday,
+            lte: endToday,
           },
-          activity: formatLogAction(log.action as LogAction),
-          date: log.createdAt,
-          description: log.description,
-          metadata: log.metadata
-        };
-      } catch (error) {
-        console.error('[GET_ACTIVITY_USER] Error details:', {
-          clerkId: log.user.clerkId,
-          error: error instanceof Error ? error.message : error
-        });
-
-        return {
-          id: log.id,
-          user: {
-            clerkId: log.user.clerkId,
-            firstName: null,
-            lastName: null,
-            imageUrl: null
+        },
+      }),
+      // Count articles created yesterday
+      prisma.news.count({
+        where: {
+          createdAt: {
+            gte: startYesterday,
+            lte: endYesterday,
           },
-          activity: formatLogAction(log.action as LogAction),
-          date: log.createdAt,
-          description: log.description,
-          metadata: log.metadata
-        };
-      }
-    })
-  );
+        },
+      }),
+      prisma.log.findMany({
+        take: 20,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          user: true,
+        },
+      }),
+      prisma.comment.count({
+        where: {
+          createdAt: {
+            gte: startToday,
+            lte: endToday,
+          },
+        },
+      }),
+      prisma.comment.count({
+        where: {
+          createdAt: {
+            gte: startYesterday,
+            lte: endYesterday,
+          },
+        },
+      }),
+      prisma.like.count({
+        where: {
+          createdAt: {
+            gte: startToday,
+            lte: endToday,
+          },
+        },
+      }),
+      prisma.like.count({
+        where: {
+          createdAt: {
+            gte: startYesterday,
+            lte: endYesterday,
+          },
+        },
+      }),
+    ]);
 
-  return {
-    metrics: {
-      totalNews: {
-        value: newsCreated.toString(),
-        trend: calculateTrend(todayLogs, yesterdayLogs),
+    // Calculate trends
+    const calculateTrend = (current: number, previous: number) => {
+      if (previous === 0) return 0;
+      return ((current - previous) / previous) * 100;
+    };
+
+    // Get total counts directly from respective tables
+    const [totalArticles, totalLikes, totalReaders] = await Promise.all([
+      // Get total articles count directly from news table
+      prisma.news.count(),
+      // Get total likes count
+      prisma.like.count(),
+      // Get total readers (counting users who have liked or bookmarked)
+      prisma.userInteraction.count({
+        where: {
+          OR: [
+            { likes: { some: {} } },  // Users who have liked
+            { collections: { some: { bookmarks: { some: {} } } } }  // Users who have bookmarked
+          ]
+        }
+      }),
+    ]);
+
+    // Calculate trends
+    const articlesTrend = calculateTrend(todayArticles, yesterdayArticles);
+    const commentsTrend = calculateTrend(todayNewComments, yesterdayNewComments);
+    const likesTrend = calculateTrend(todayLikes, yesterdayLikes);
+
+    // Format activities
+    const activities: Activity[] = await Promise.all(
+      recentActivities.map(async (log) => {
+        try {
+          const clerkUser = await getClerkUser(log.user.clerkId);
+
+          return {
+            id: log.id,
+            user: {
+              clerkId: log.user.clerkId,
+              firstName: clerkUser?.firstName || null,
+              lastName: clerkUser?.lastName || null,
+              imageUrl: clerkUser?.imageUrl || null,
+            },
+            activity: formatLogAction(log.action as LogAction),
+            date: log.createdAt,
+            description: log.description,
+            metadata: log.metadata
+          };
+        } catch (error) {
+          console.error('[GET_ACTIVITY_USER] Error details:', {
+            clerkId: log.user.clerkId,
+            error: error instanceof Error ? error.message : error
+          });
+
+          return {
+            id: log.id,
+            user: {
+              clerkId: log.user.clerkId,
+              firstName: null,
+              lastName: null,
+              imageUrl: null
+            },
+            activity: formatLogAction(log.action as LogAction),
+            date: log.createdAt,
+            description: log.description,
+            metadata: log.metadata
+          };
+        }
+      })
+    );
+
+    return {
+      metrics: {
+        totalNews: {
+          value: totalArticles.toString(),
+          trend: articlesTrend,
+        },
+        totalLikes: {
+          value: totalLikes.toString(),
+          trend: likesTrend,
+        },
+        totalReaders: {
+          value: totalReaders.toString(),
+          trend: calculateTrend(todayArticles, yesterdayArticles),
+        },
+        newComments: {
+          value: todayNewComments.toString(),
+          trend: commentsTrend
+        }
       },
-      activeNews: {
-        value: activeNewsCount.toString(),
-        trend: calculateTrend(weekLogs, yesterdayLogs),
-      },
-      totalReaders: {
-        value: totalReaders.toString(),
-        trend: calculateTrend(todayLogs, yesterdayLogs),
-      },
-      newComments: {
-        value: todayNewComments.toString(),
-        trend: commentsTrend
-      }
-    },
-    activities
-  };
-}
+      activities
+    };
+  }
 
 function formatLogAction(action: LogAction): string {
   switch (action) {
@@ -269,7 +269,6 @@ function formatLogAction(action: LogAction): string {
     case LOG_ACTIONS.USER_DELETED:
       return 'Deleted user';
     default:
-        return (action as string).replace(/\./g, ' ').toLowerCase();
+      return (action as string).replace(/\./g, ' ').toLowerCase();
   }
 }
-

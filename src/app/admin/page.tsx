@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowUpIcon, ArrowDownIcon, User2, Info, ActivityIcon } from 'lucide-react';
+import { ArrowUpIcon, ArrowDownIcon, User2, Info, ActivityIcon, Heart } from 'lucide-react';
 import { getDashboardData } from '@/actions/dashboard';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -51,25 +51,25 @@ export default async function Page() {
 
     const dashboardData: DashboardData[] = [
         {
-            title: 'Total Artikel',
+            title: 'Total News',
             value: data.metrics.totalNews.value,
             trend: data.metrics.totalNews.trend,
             icon: <ActivityIcon className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
         },
         {
-            title: 'Artikel Aktif',
-            value: data.metrics.activeNews.value,
-            trend: data.metrics.activeNews.trend,
-            icon: <ActivityIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
+            title: 'Total Likes',
+            value: data.metrics.totalLikes.value,
+            trend: data.metrics.totalLikes.trend,
+            icon: <Heart className="w-4 h-4 md:w-5 md:h-5 text-red-500" />
         },
         {
-            title: 'Total Pembaca',
+            title: 'Total Readers',
             value: parseInt(data.metrics.totalReaders.value).toLocaleString(),
             trend: data.metrics.totalReaders.trend,
             icon: <User2 className="w-4 h-4 md:w-5 md:h-5 text-purple-500" />
         },
         {
-            title: 'Komentar Baru',
+            title: 'Total Comments',
             value: data.metrics.newComments.value,
             trend: data.metrics.newComments.trend,
             icon: <ActivityIcon className="w-4 h-4 md:w-5 md:h-5 text-orange-500" />
@@ -111,7 +111,7 @@ export default async function Page() {
                                             <ArrowDownIcon className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                                         )}
                                         {Math.abs(item.trend).toFixed(1)}%
-                                    </span>
+                                        </span>
                                 </div>
                             </CardContent>
                         </Card>
